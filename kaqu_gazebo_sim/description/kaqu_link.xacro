@@ -14,13 +14,6 @@
       <mass value="1.0"/>
       <inertia ixx="0.00270833" iyy="0.00270" izz="0.00375" ixy="-0.0" iyz="0.0" ixz="0.0"/>
     </inertial>
-    <!--
-    <inertial>
-      <origin xyz="-9.249840190324093e-15 -6.214898224181922e-17 0.06379502131016988" rpy="0 0 0"/>
-      <mass value="6.892663227665913"/>
-      <inertia ixx="0.021567" iyy="0.021081" izz="0.022375" ixy="0.0" iyz="0.0" ixz="-0.0"/>
-    </inertial>
-    -->
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
@@ -291,91 +284,5 @@
       </geometry>
     </collision>
   </link>
-
-
-  
-  <!-- <link name="fl_foot_sphere">
-    <inertial>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
-    </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <sphere radius="0.015"/>
-      </geometry>
-      <material name="gray"/>
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <sphere radius="0.015"/>
-      </geometry>
-    </collision>
-  </link>
-
-  <link name="fr_foot_sphere">
-    <inertial>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
-    </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <sphere radius="0.015"/>
-      </geometry>
-      <material name="gray"/>
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <sphere radius="0.015"/>
-      </geometry>
-    </collision>
-  </link>
-
-  <link name="rl_foot_sphere">
-    <inertial>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
-    </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <sphere radius="0.015"/>
-      </geometry>
-      <material name="gray"/>
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <sphere radius="0.015"/>
-      </geometry>
-    </collision>
-  </link>
-
-  <link name="rr_foot_sphere">
-    <inertial>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="0.01"/>
-      <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
-    </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <sphere radius="0.015"/>
-      </geometry>
-      <material name="gray"/>
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <sphere radius="0.015"/>
-      </geometry>
-    </collision>
-  </link> -->
 
 </robot>

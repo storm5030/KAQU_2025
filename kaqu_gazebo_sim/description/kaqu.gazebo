@@ -110,37 +110,4 @@
     <kd>1.0</kd>
   </gazebo>
 
-  <!-- <gazebo reference="fl_foot_sphere">
-    <mu1>2.0</mu1>
-    <mu2>2.0</mu2>
-    <minDepth>0.002</minDepth>
-    <kp>1000000</kp>
-    <kd>100</kd>
-  </gazebo>
-
-  <gazebo reference="fr_foot_sphere">
-    <mu1>2.0</mu1>
-    <mu2>2.0</mu2>
-    <minDepth>0.002</minDepth>
-    <kp>1000000</kp>
-    <kd>100</kd>
-  </gazebo>
-
-  <gazebo reference="rl_foot_sphere">
-    <mu1>2.0</mu1>
-    <mu2>2.0</mu2>
-    <minDepth>0.002</minDepth>
-    <kp>1000000</kp>
-    <kd>100</kd>
-  </gazebo>
-
-
-  <gazebo reference="rr_foot_sphere">
-    <mu1>2.0</mu1>
-    <mu2>2.0</mu2>
-    <minDepth>0.002</minDepth>
-    <kp>1000000</kp>
-    <kd>100</kd>
-  </gazebo> -->
-
 </robot>

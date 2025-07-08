@@ -7,9 +7,6 @@
             <plugin>gz_ros2_control/GazeboSimSystem</plugin>
         </hardware>
 
-        <!-- <xacro:property name="velocity"       value="5"/>
-        <xacro:property name="effort"         value="10"/> 모터 토크 -->
-
         <joint name="fr_mainbodyhip_joint">
             <command_interface name="position"/>
             <state_interface name="position"/>

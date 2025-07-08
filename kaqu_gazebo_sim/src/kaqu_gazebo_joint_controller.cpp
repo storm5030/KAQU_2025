@@ -28,7 +28,7 @@ public:
     }
 
 private:
-    void callback(const sensor_msgs::msg::JointState::SharedPtr msg_rx) const
+    void callback(const std::shared_ptr<const sensor_msgs::msg::JointState> msg_rx) const
     {   
         // Create Float64MultiArray message for publishing
         auto joint_angles = std_msgs::msg::Float64MultiArray();
