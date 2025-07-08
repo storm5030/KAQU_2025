@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro"  name="kaqu">
+    
+    <xacro:include filename="gazebo_ros2_control_plugin.xacro" /> 
+    
+    <xacro:include filename="kaqu_link.xacro" />
+
+    <xacro:include filename="kaqu_joint.xacro" />
+
+    <xacro:include filename="kaqu.trans" />
+
+    <xacro:include filename="kaqu.gazebo" />
+
+</robot>

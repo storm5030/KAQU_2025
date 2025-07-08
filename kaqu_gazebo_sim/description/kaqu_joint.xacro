@@ -1,0 +1,232 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:include filename="$(find kaqu_gazebo_sim)/description/kaqu.gazebo" />
+    <xacro:include filename="$(find kaqu_gazebo_sim)/description/kaqu.trans" />
+    
+    <xacro:property name="effort_limit" value="20.0" />
+    <xacro:property name="velocity_limit" value="10.0" />
+    
+
+    <joint name="fl_mainbodyhip_joint" type="revolute">
+        <origin xyz="-0.074 0.077 0.04925" rpy="0 0 0"/>
+        <parent link="base_link"/>
+        <child link="fl_hip_1"/>
+        <axis xyz="-0.0 1.0 -0.0"/>
+        <limit lower="-1.57" upper="1.57" effort="${effort_limit}" velocity="${velocity_limit}"/>
+         
+
+        <ros2_control>
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </ros2_control>
+    </joint>
+
+    <joint name="fr_mainbodyhip_joint" type="revolute">
+        <origin xyz="0.074 0.077 0.04925" rpy="0 0 0"/>
+        <parent link="base_link"/>
+        <child link="fr_hip_1"/>
+        <axis xyz="-0.0 1.0 -0.0"/>
+        <limit lower="-1.57" upper="1.57" effort="${effort_limit}" velocity="${velocity_limit}"/>
+         
+
+        <ros2_control>
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </ros2_control>
+    </joint>
+
+    <joint name="rl_mainbodyhip_joint" type="revolute">
+        <origin xyz="-0.074 -0.077 0.04925" rpy="0 0 0"/>
+        <parent link="base_link"/>
+        <child link="rl_hip_1"/>
+        <axis xyz="0.0 1.0 -0.0"/>
+        <limit lower="-1.57" upper="1.57" effort="${effort_limit}" velocity="${velocity_limit}"/>
+          
+
+        <ros2_control>
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </ros2_control>
+    </joint>
+
+    <joint name="rr_mainbodyhip_joint" type="revolute">
+        <origin xyz="0.074 -0.077 0.04925" rpy="0 0 0"/>
+        <parent link="base_link"/>
+        <child link="rr_hip_1"/>
+        <axis xyz="-0.0 1.0 0.0"/>
+        <limit lower="-1.57" upper="1.57" effort="${effort_limit}" velocity="${velocity_limit}"/>
+         
+
+        <ros2_control>
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </ros2_control>
+    </joint>
+
+    <joint name="fl_hip1_joint" type="revolute">
+        <origin xyz="-0.021 0.03925 -0.01575" rpy="0 0 0"/>
+        <parent link="fl_hip_1"/>
+        <child link="fl_leg1_1"/>
+        <axis xyz="1.0 -0.0 0.0"/>
+        <limit lower="-1.2217" upper="3.14" effort="${effort_limit}" velocity="${velocity_limit}"/>
+         
+
+        <ros2_control>
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </ros2_control>
+    </joint>
+
+    <joint name="rl_hip1_joint" type="revolute">
+        <origin xyz="-0.021 -0.01525 -0.01575" rpy="0 0 0"/>
+        <!--<origin xyz="-0.021 -0.03925 -0.01575" rpy="0 0 0"/>-->
+        <parent link="rl_hip_1"/>
+        <child link="rl_leg1_1"/>
+        <axis xyz="1.0 -0.0 -0.0"/>
+        <limit lower="-1.2217" upper="3.14" effort="${effort_limit}" velocity="${velocity_limit}"/>
+         
+
+        <ros2_control>
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </ros2_control>
+    </joint>
+
+    <joint name="fr_hip1_joint" type="revolute">
+        <origin xyz="0.021 0.03925 -0.01575" rpy="0 0 0"/>
+        <parent link="fr_hip_1"/>
+        <child link="fr_leg1_1"/>
+        <axis xyz="1.0 0.0 0.0"/>
+        <limit lower="-1.2217" upper="3.14" effort="${effort_limit}" velocity="${velocity_limit}"/>
+         
+
+        <ros2_control>
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </ros2_control>
+        
+    </joint>
+
+    <joint name="rr_hip1_joint" type="revolute">
+        <origin xyz="0.021 -0.01525 -0.01575" rpy="0 0 0"/>
+        <!--<origin xyz="0.021 -0.03925 -0.01575" rpy="0 0 0"/>-->
+        <parent link="rr_hip_1"/>
+        <child link="rr_leg1_1"/>
+        <axis xyz="1.0 -0.0 -0.0"/>
+        <limit lower="-1.2217" upper="3.14" effort="${effort_limit}" velocity="${velocity_limit}"/>
+         
+
+        <ros2_control>
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </ros2_control>
+       
+    </joint>
+
+    <joint name="fl_14_joint" type="revolute">
+        <origin xyz="-0.012 -0.1 0.0" rpy="0 0 0"/>
+        <parent link="fl_leg1_1"/>
+        <child link="fl_leg4_1"/>
+        <axis xyz="1.0 -0.0 0.0"/>
+        <limit lower="-2.618" upper="1.57" effort="${effort_limit}" velocity="${velocity_limit}"/>
+         
+
+        <ros2_control>
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </ros2_control>
+         
+    </joint>
+
+    <joint name="rl_14_joint" type="revolute">
+        <origin xyz="-0.012 -0.1 0.0" rpy="0 0 0"/>
+        <parent link="rl_leg1_1"/>
+        <child link="rl_leg4_1"/>
+        <axis xyz="1.0 -0.0 -0.0"/>
+        <limit lower="-2.618" upper="1.57" effort="${effort_limit}" velocity="${velocity_limit}"/>
+         
+
+        <ros2_control>
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </ros2_control>
+    </joint>
+
+    <joint name="fr_14_joint" type="revolute">
+        <origin xyz="0.012 -0.1 0.0" rpy="0 0 0"/>
+        <parent link="fr_leg1_1"/>
+        <child link="fr_leg4_1"/>
+        <axis xyz="1.0 0.0 -0.0"/>
+        <limit lower="-2.618" upper="1.57" effort="${effort_limit}" velocity="${velocity_limit}"/>
+         
+
+        <ros2_control>
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </ros2_control>
+    </joint>
+
+    <joint name="rr_14_joint" type="revolute">
+        <origin xyz="0.012 -0.1 0.0" rpy="0 0 0"/>
+        <parent link="rr_leg1_1"/>
+        <child link="rr_leg4_1"/>
+        <axis xyz="1.0 0.0 0.0"/>
+        <limit lower="-2.618" upper="1.57" effort="${effort_limit}" velocity="${velocity_limit}"/>
+         
+
+        <ros2_control>
+            <command_interface name="position"/>
+            <state_interface name="position"/>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </ros2_control>
+    </joint>
+
+     <!-- <joint name="fl_foot_sphere_joint" type="fixed">
+        <parent link="fl_leg4_1"/>
+        <child link="fl_foot_sphere"/>
+        <origin xyz="0 0.1 0" rpy="0 0 0"/>
+     </joint>
+
+      <joint name="fr_foot_sphere_joint" type="fixed">
+        <parent link="fr_leg4_1"/>
+        <child link="fr_foot_sphere"/>
+        <origin xyz="0 0.1 0" rpy="0 0 0"/>
+     </joint>
+
+      <joint name="rl_foot_sphere_joint" type="fixed">
+        <parent link="rl_leg4_1"/>
+        <child link="rl_foot_sphere"/>
+        <origin xyz="0 0.1 0" rpy="0 0 0"/>
+     </joint>
+
+      <joint name="rr_foot_sphere_joint" type="fixed">
+        <parent link="rr_leg4_1"/>
+        <child link="rr_foot_sphere"/>
+        <origin xyz="0 0.1 0" rpy="0 0 0"/>
+     </joint> -->
+
+</robot>
