@@ -25,12 +25,6 @@ install(TARGETS
   kaqu_gamepad_node
   DESTINATION lib/${PROJECT_NAME})
 
-install(
-  PROGRAMS
-    scripts/joystick_gui_node.py
-  DESTINATION lib/${PROJECT_NAME}
-)
-
 # 런치 디렉토리 설치 설정
 install(
   DIRECTORY launch
