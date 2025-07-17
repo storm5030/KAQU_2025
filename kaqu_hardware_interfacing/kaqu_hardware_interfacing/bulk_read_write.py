@@ -89,7 +89,12 @@ DXL_2PI                     = 4095          # 포지션 기준 한바퀴. 앞으
 
 TORQUE_ENABLE               = 1                 # Value for enabling the torque
 TORQUE_DISABLE              = 0                 # Value for disabling the torque
-DXL_MOVING_STATUS_THRESHOLD = 20                # Dynamixel moving status threshold
+DXL_MOVING_STATUS_THRESHOLD = 10                # Dynamixel moving status threshold
+
+# Set Velocity Limit to 600 (approx. 137.4 RPM) 기본값 200정도
+VELOCITY_LIMIT_VALUE = 200
+ADDR_VELOCITY_LIMIT = 44
+LEN_VELOCITY_LIMIT = 4
 
 
 # DYNAMIXEL Protocol Version 
@@ -168,6 +173,14 @@ for i in dxl_id:
         print("%s" % packetHandler.getRxPacketError(dxl_error))
     else:
         print("Operating mode changed to extended position control mode of dxl No. ", i)
+
+    dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, i, ADDR_VELOCITY_LIMIT, VELOCITY_LIMIT_VALUE)
+    if dxl_comm_result != COMM_SUCCESS:
+        print("[ID:%03d] Velocity Limit write failed: %s" % (i, packetHandler.getTxRxResult(dxl_comm_result)))
+    elif dxl_error != 0:
+        print("[ID:%03d] Velocity Limit error: %s" % (i, packetHandler.getRxPacketError(dxl_error)))
+    else:
+        print("[ID:%03d] Velocity Limit set to %d" % (i, VELOCITY_LIMIT_VALUE))
 
 
 
