@@ -7,6 +7,8 @@
   <license>Apache License 2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
 
   <!-- Build dependencies -->
   <build_depend>rclcpp</build_depend>
@@ -23,6 +25,9 @@
   <exec_depend>kaqu_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>rclpy</exec_depend>
+  
+  <exec_depend>python3-pyqt5</exec_depend>
+
 
   <!-- Test dependencies -->
   <test_depend>ament_lint_auto</test_depend>

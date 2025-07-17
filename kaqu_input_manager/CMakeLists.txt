@@ -37,4 +37,13 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+# 파이썬 설치를 위한 모듈 추가
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+# scripts 디렉토리 내의 파이썬 노드를 설치
+install(PROGRAMS
+  scripts/joystick_gui_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_package()

@@ -34,7 +34,7 @@ class VirtualJoystickNode(Node):
         super().__init__('virtual_joystick_node')
         self.publisher = self.create_publisher(Joy, 'joy', 10)
         self.joy_msg = Joy()
-        self.joy_msg.axes = [0.0] * 8
+        self.joy_msg.axes = [0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
         self.joy_msg.buttons = [0] * 11
         self.timer = self.create_timer(1.0 / PUBLISH_HZ, self.publish_joy)
 
@@ -197,20 +197,41 @@ class JoystickGUI:
         if shape == "circle":
             canvas.create_oval(2, 2, size-2, size-2, fill=color if color else PALETTE["bg_panel"], outline="white")
             canvas.create_text(size/2, size/2, text=label, fill="white", font=("Arial", 10, "bold"))
-            canvas.bind("<ButtonPress-1>", lambda e: self.ros_node.press_button(btn_index))
-            canvas.bind("<ButtonRelease-1>", lambda e: self.ros_node.release_button(btn_index))
             if label in PALETTE["abxy"]:
                 add_hover_effect(canvas, label)
+
+            canvas.bind("<ButtonPress-1>", lambda e: self.ros_node.press_button(btn_index))
+            canvas.bind("<ButtonRelease-1>", lambda e: self.ros_node.release_button(btn_index))
             return canvas
         else:
-            btn = tk.Button(parent, text=label, width=4, height=2, bg=color if color else PALETTE["bg_panel"], fg="white")
-            btn.bind("<ButtonPress>", lambda e: self.ros_node.press_button(btn_index))
-            btn.bind("<ButtonRelease>", lambda e: self.ros_node.release_button(btn_index))
-            return btn
+            def on_press(e):
+                if label in ["↑", "↓", "←", "→"]:
+                    direction = {
+                        "↑": "UP", "↓": "DOWN", "←": "LEFT", "→": "RIGHT"
+                    }[label]
+                    self.ros_node.update_dpad(direction)
+                elif label == "LT":
+                    self.ros_node.joy_msg.axes[2] = -1.0
+                elif label == "RT":
+                    self.ros_node.joy_msg.axes[5] = -1.0
+                else:
+                    self.ros_node.press_button(btn_index)
 
-        canvas.bind("<ButtonPress-1>", lambda e: self.ros_node.press_button(btn_index))
-        canvas.bind("<ButtonRelease-1>", lambda e: self.ros_node.release_button(btn_index))
-        return canvas
+            def on_release(e):
+                if label in ["↑", "↓", "←", "→"]:
+                    self.ros_node.update_dpad("CENTER")
+                elif label == "LT":
+                    self.ros_node.joy_msg.axes[2] = 1.0
+                elif label == "RT":
+                    self.ros_node.joy_msg.axes[5] = 1.0
+                else:
+                    self.ros_node.release_button(btn_index)
+
+            btn = tk.Button(parent, text=label, width=4, height=2,
+                            bg=color if color else PALETTE["bg_panel"], fg="white")
+            btn.bind("<ButtonPress>", on_press)
+            btn.bind("<ButtonRelease>", on_release)
+            return btn
 
     def on_stick_input(self, label, direction):
         self.ros_node.reset_axes()
