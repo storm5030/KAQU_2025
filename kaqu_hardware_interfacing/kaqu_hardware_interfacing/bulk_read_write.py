@@ -255,7 +255,7 @@ class Bulk_Read_Write(Node):
 
         # 주의 : openCR 연결해보고 timer period 조절해야 함
         data_pub_period = 0.02
-        #control_period = 0.02
+        control_period = 0.02
 
         # 다리 각도 제어값(엉덩이)
         # 주의 : msg타입, 토픽이름 수정해야 함. 

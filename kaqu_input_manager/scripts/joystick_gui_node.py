@@ -55,18 +55,18 @@ class VirtualJoystickNode(Node):
             elif direction == "DOWN":
                 self.joy_msg.axes[1] = -1.0
             elif direction == "LEFT":
-                self.joy_msg.axes[0] = -1.0
-            elif direction == "RIGHT":
                 self.joy_msg.axes[0] = 1.0
+            elif direction == "RIGHT":
+                self.joy_msg.axes[0] = -1.0
         elif stick == "R":
             if direction == "UP":
                 self.joy_msg.axes[4] = 1.0
             elif direction == "DOWN":
                 self.joy_msg.axes[4] = -1.0
             elif direction == "LEFT":
-                self.joy_msg.axes[3] = -1.0
-            elif direction == "RIGHT":
                 self.joy_msg.axes[3] = 1.0
+            elif direction == "RIGHT":
+                self.joy_msg.axes[3] = -1.0
 
     def reset_axes(self):
         for i in [0,1,3,4,6,7]:
@@ -78,9 +78,9 @@ class VirtualJoystickNode(Node):
         elif direction == "DOWN":
             self.joy_msg.axes[7] = -1.0
         elif direction == "LEFT":
-            self.joy_msg.axes[6] = -1.0
-        elif direction == "RIGHT":
             self.joy_msg.axes[6] = 1.0
+        elif direction == "RIGHT":
+            self.joy_msg.axes[6] = -1.0
         elif direction == "CENTER":
             self.reset_dpad()
 
