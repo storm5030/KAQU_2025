@@ -12,3 +12,4 @@
     <xacro:include filename="kaqu.gazebo" />
 
 </robot>
+ 

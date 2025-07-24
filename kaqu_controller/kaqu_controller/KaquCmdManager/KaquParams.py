@@ -57,12 +57,12 @@ class LegParameters(object):
         def __init__(self):
             self.cycle_time = None
             unit_time = 0.1
-            self.stance_time = unit_time*1.8*2     # 0.18
-            self.swing_time = unit_time*2.4*2 #0.24
+            self.stance_time = unit_time*1.8     # 0.18
+            self.swing_time = unit_time*2.4 #0.24
             self.time_step = 0.02 #0.09
-            self.max_x_vel = 15 # 30
+            self.max_x_vel = 30 # 30
             self.max_y_vel = 10
-            self.max_yaw_rate = 0.1
+            self.max_yaw_rate = 0.3
             self.z_leg_lift = 40 #20
     
     class Physical_Params():

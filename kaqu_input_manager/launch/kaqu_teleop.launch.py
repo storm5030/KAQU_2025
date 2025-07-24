@@ -17,13 +17,18 @@ def generate_launch_description():
         output='screen',
     )
 
-    node_kaqu_gamepad = ExecuteProcess(
-        cmd=['ros2', 'run', 'kaqu_input_manager', 'kaqu_gamepad_node'],
+    # node_kaqu_gamepad = ExecuteProcess(
+    #     cmd=['ros2', 'run', 'kaqu_input_manager', 'kaqu_gamepad_node'],
+    #     output='screen'
+    # )
+
+    node_joystick_gui= ExecuteProcess(
+        cmd=['ros2', 'run', 'kaqu_input_manager', 'joystick_gui_node.py'],
         output='screen'
     )
 
     # Launch Description 반환
     return LaunchDescription([
         node_joy,
-        node_kaqu_gamepad,
+        node_joystick_gui
     ])
