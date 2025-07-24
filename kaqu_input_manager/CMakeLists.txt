@@ -20,16 +20,16 @@ ament_target_dependencies(kaqu_gamepad_node
   trajectory_msgs
 )
 
-# 실행 파일 설치 설정
-install(TARGETS
-  kaqu_gamepad_node
-  DESTINATION lib/${PROJECT_NAME})
-
 install(
   PROGRAMS
     scripts/joystick_gui_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
+
+# 실행 파일 설치 설정
+install(TARGETS
+  kaqu_gamepad_node
+  DESTINATION lib/${PROJECT_NAME})
 
 # 런치 디렉토리 설치 설정
 install(
