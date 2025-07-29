@@ -12,7 +12,7 @@ def generate_launch_description():
     controller_pkg = FindPackageShare('kaqu_controller')
     input_pkg = FindPackageShare('kaqu_input_manager')
 
-    # 1. Gazebo 시뮬레이션 포함
+    # 1. Gazebo 시뮬레이션
     gazebo_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([gazebo_pkg, 'launch', 'kaqu_gazebo_sim.launch.py'])
@@ -27,7 +27,7 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 3. Controller 노드 2 (예: Gait Controller)
+    # 3. Controller 노드 2 (각도)
     controller_node2 = Node(
         package='kaqu_controller',
         executable='AnglePulbisherNode',
