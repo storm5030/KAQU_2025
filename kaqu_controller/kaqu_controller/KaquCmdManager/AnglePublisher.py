@@ -13,6 +13,7 @@ class QuadrupedControllerNode(Node):
     def __init__(self):
         super().__init__('quadruped_controller_node')
 
+        # 로봇 파라미터
         body = [155.0, 140.5] # 길이와 너비
         legs = [0.0, 42.4, 101.0, 108.9] # 다리 링크 길이가 아니라 계산에 필요한 길이임
         default_height = 160
@@ -24,12 +25,20 @@ class QuadrupedControllerNode(Node):
         self.inverse_kinematics = InverseKinematics(body, legs,x_shift_front,x_shift_back)
         self.state = RobotState(0.5)
 
+        # 발끝 위치 수신
         self.foot_subscriber = self.create_subscription(Float64MultiArray, '/legpo', self.sub_call, 10)
 
-        # Float64MultiArray 퍼블리셔로 변경
+        # Float64MultiArray 퍼블리셔 (Gazebo 및 hardware)
         self.joint_publisher = self.create_publisher(
             Float64MultiArray,
             "joint_group_position_controller/commands",
+            10
+        )
+
+        # RViz용 JointState 퍼블리셔
+        self.joint_state_pub = self.create_publisher(
+            JointState,
+            '/joint_states',
             10
         )
 
@@ -63,15 +72,24 @@ class QuadrupedControllerNode(Node):
         roll, pitch, yaw = self.state.body_local_orientation
 
         try:
+            # IK 계산
             pub_angles = self.inverse_kinematics.inverse_kinematics(
                 leg_position, dx, dy, dz, roll, pitch, yaw
             )
             self.get_logger().info(f"Calculated joint angles: {pub_angles}")
-            # numpy array를 list로 변환하여 퍼블리시
+            # numpy array를 list로 변환
+
+            # 각도 퍼블리시
             joint_state_msg = Float64MultiArray()
             joint_state_msg.data = list(pub_angles)  # numpy array를 list로 변환
-
             self.joint_publisher.publish(joint_state_msg)
+
+            # RViz용 JointState 퍼블리시
+            joint_state_msg = JointState()
+            joint_state_msg.header.stamp = self.get_clock().now().to_msg()
+            joint_state_msg.name = self.joint_names
+            joint_state_msg.position = list(pub_angles)
+            self.joint_state_pub.publish(joint_state_msg)
 
         except Exception as e:
             self.get_logger().error(f"Error in control loop: {e}")

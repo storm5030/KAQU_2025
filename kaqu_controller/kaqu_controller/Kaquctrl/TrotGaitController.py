@@ -165,6 +165,7 @@ class TrotSwingController(object):
         # 마지막 틱 예외처리
         if swing_prop >= 1.0:
             new_position = touchdown_location * np.array([1, 1, 0]) + np.array([0, 0, command.robot_height])
+            #[x,y,z]
             return new_position
         
         velocity = (touchdown_location - foot_location) / float(time_left) * np.array([1, 1, 0])

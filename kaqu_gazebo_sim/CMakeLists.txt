@@ -52,6 +52,7 @@ install(DIRECTORY description/
 install(DIRECTORY
   config
   description
+  rviz
   launch
   worlds
   DESTINATION share/${PROJECT_NAME}
