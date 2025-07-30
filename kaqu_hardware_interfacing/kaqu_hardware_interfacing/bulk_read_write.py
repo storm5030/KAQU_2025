@@ -41,15 +41,20 @@ if os.name == 'nt':
         return msvcrt.getch().decode()
 else:
     import sys, tty, termios
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
+
     def getch():
+        fd = sys.stdin.fileno()
+        if not os.isatty(fd):
+            print("Warning: stdin is not a TTY. getch() is disabled.")
+            return ''
+        old_settings = termios.tcgetattr(fd)
         try:
-            tty.setraw(sys.stdin.fileno())
+            tty.setraw(fd)
             ch = sys.stdin.read(1)
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return ch
+
 
 #os.sys.path.append('./../../DynamixelSDK/python/src/dynamixel_sdk/dynamixel_functions_py')             # Path setting
 from dynamixel_sdk import *  #다이나믹셀 라이브러리 사용
