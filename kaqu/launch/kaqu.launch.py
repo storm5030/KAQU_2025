@@ -8,16 +8,16 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     # 각 패키지 경로 지정
-    gazebo_pkg = FindPackageShare('kaqu_gazebo_sim')
+    # gazebo_pkg = FindPackageShare('kaqu_gazebo_sim')
     controller_pkg = FindPackageShare('kaqu_controller')
     input_pkg = FindPackageShare('kaqu_input_manager')
 
     # 1. Gazebo 시뮬레이션
-    gazebo_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([gazebo_pkg, 'launch', 'kaqu_gazebo_sim.launch.py'])
-        )
-    )
+    # gazebo_launch = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource(
+    #         PathJoinSubstitution([gazebo_pkg, 'launch', 'kaqu_gazebo_sim.launch.py'])
+    #     )
+    # )
 
     # 2. Controller 노드 1 (보행 제어)
     controller_node1 = Node(
