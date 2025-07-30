@@ -43,7 +43,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        gazebo_launch,
+        # gazebo_launch,
         controller_node1,
         controller_node2,
         input_launch
