@@ -11,6 +11,7 @@ def generate_launch_description():
     # gazebo_pkg = FindPackageShare('kaqu_gazebo_sim')
     controller_pkg = FindPackageShare('kaqu_controller')
     input_pkg = FindPackageShare('kaqu_input_manager')
+    hardware_pkg = FindPackageShare('kaqu_hardware_interfacing')
 
     # 1. Gazebo 시뮬레이션
     # gazebo_launch = IncludeLaunchDescription(
@@ -42,9 +43,17 @@ def generate_launch_description():
         )
     )
 
+    hardware_node = Node(
+        package='kaqu_hardware_interfacing',
+        executable='bulk_read_write',
+        name='HardWareNode',
+    output='screen'
+    )
+
     return LaunchDescription([
         # gazebo_launch,
         controller_node1,
         controller_node2,
-        input_launch
+        input_launch,
+        hardware_node
     ])
