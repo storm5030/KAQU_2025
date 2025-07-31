@@ -19,6 +19,7 @@ class TrotGaitController(GaitController):
         self.trotNeeded = True
 
         leg = LegParameters()
+        #test
         
         contact_phases = np.array([
             [1, 1, 1, 0],  # 0: Leg swing
