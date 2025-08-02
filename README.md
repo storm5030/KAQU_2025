@@ -3,8 +3,6 @@
     
     https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html
     
-    https://docs.ros.org/en/humble/Installation/Alternatives/Ubuntu-Development-Setup.html#install-development-tools-and-ros-tools (일부만, 필요한 경유 설치 예정)
-    
 - [2] Terminator
     
     Ubuntu Software - Terminator 
