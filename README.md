@@ -1,4 +1,6 @@
 # KAQU_2025
+최효린
+
 - [1] ROS2 Humble
     
     https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html
