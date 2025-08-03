@@ -124,9 +124,8 @@ class RobotManager(Node):
         print(f"Behavior State: {self.state.behavior_state}, Current Controller: {self.current_controller}")
 
     def imu_orientation(self, msg):
-        quaternion = [msg.axes[0], msg.axes[1], msg.axes[7], 1]
-        rotation = R.from_quat(quaternion)
-        rpy = rotation.as_euler('xyz', degrees=True)  # false 하면 라디안
+        quaternion = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
+        rpy = R.from_quat(quaternion)
         self.state.imu_roll = rpy[0]
         self.state.imu_pitch = rpy[1]
 
