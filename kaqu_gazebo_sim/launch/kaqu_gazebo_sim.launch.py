@@ -28,6 +28,14 @@ def generate_launch_description():
         output='screen'
     )
 
+    # ros_gz_bridge 실행
+    imu_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=['/imu@sensor_msgs/msg/Imu@gz.msgs.IMU'],
+        output='screen'
+    )
+
     # 로봇 스폰 (딜레이: 1초)
     spawn_entity = TimerAction(
         period=1.0,
@@ -65,4 +73,5 @@ def generate_launch_description():
         gz_sim,
         spawn_entity,
         spawn_controllers,
+        imu_bridge
     ])

@@ -27,12 +27,6 @@ class TrotGaitController(GaitController):
             [1, 0, 1, 1],
             [1, 1, 1, 0]
         ])
-        # contact_phases = np.array([
-        #     [1, 1, 0, 1],  # 0: Leg swing
-        #     [0, 1, 1, 1],  # 1: Moving stance forward
-        #     [0, 1, 1, 1],
-        #     [1, 1, 0, 1]
-        # ])
 
 
         z_error_constant = 0.5*4#0.5 * 4  # This constant determines how fast we move toward the goal in the z direction

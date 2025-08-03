@@ -11,5 +11,8 @@
 
     <xacro:include filename="kaqu.gazebo" />
 
+    <xacro:include filename="kaqu_imu.xacro"/>
+    <xacro:imu_sensor_xacro/>
+
 </robot>
  
