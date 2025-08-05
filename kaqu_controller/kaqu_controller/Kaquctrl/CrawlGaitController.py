@@ -3,8 +3,10 @@
 # Modified by: lnotspotl
 
 import numpy as np
-from . GaitController import GaitController
-from RoboticsUtilities.Transformations import rotz
+from kaqu_controller.Kaquctrl.GaitController import GaitController
+from kaqu_controller.Kaquctrl.PIDController import PID_controller
+from kaqu_controller.KaquIK.KinematicsCalculations import rotxyz, rotz
+from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
 
 class CrawlGaitController(GaitController):
     def __init__(self, default_stance, stance_time, swing_time, time_step):
