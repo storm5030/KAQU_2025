@@ -1,44 +1,16 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
-
-  <xacro:macro name="imu_gazebo_plugin" params="parent imu_link topic">
-
-    <link name="${imu_link}">
-      <inertial>
-        <mass value="0.001"/>
-        <origin xyz="0 0 0"/>
-        <inertia ixx="1e-6" iyy="1e-6" izz="1e-6"
-                 ixy="0.0" ixz="0.0" iyz="0.0"/>
-      </inertial>
-    </link>
-
-    <joint name="imu_joint" type="fixed">
-      <parent link="${parent}"/>
-      <child link="${imu_link}"/>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-    </joint>
-
-    <gazebo reference="${parent}">
-      <gravity>true</gravity>
-      <sensor name="imu_sensor" type="imu">
+  <xacro:macro name="imu_sensor_xacro" params="">
+    <gazebo reference="base_link">
+      <sensor name="kaqu_imu_sensor" type="imu">
+        <pose>0 0 0.02 0 0 1.5708</pose> 
+        <!-- 지금 가제보상에서 로봇이 잘못 정의됨(xy 바뀜 -> 90도 회전해서 부착) -->
         <always_on>true</always_on>
-        <update_rate>100</update_rate>
-        <visualize>true</visualize>
-        <topic>__default_topic__</topic>
-        <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
-          <topicName>${topic}</topicName>
-          <bodyName>${imu_link}</bodyName>
-          <updateRateHZ>15.0</updateRateHZ>
-          <gaussianNoise>0.0</gaussianNoise>
-          <xyzOffset>0 0 0</xyzOffset>
-          <rpyOffset>0 0 0</rpyOffset>
-          <frameName>${parent}</frameName>
-          <initialOrientationAsReference>false</initialOrientationAsReference>
-        </plugin>
-        <pose>0 0 0 0 0 0</pose>
+        <update_rate>50.0</update_rate>
+        <topic>imu</topic>
+        <imu/> 
+         <!--imu 속도, 가속도, 방향-->
       </sensor>
     </gazebo>
-
   </xacro:macro>
-
 </robot>
