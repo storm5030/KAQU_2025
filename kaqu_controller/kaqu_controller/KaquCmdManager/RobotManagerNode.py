@@ -4,14 +4,13 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation as R
-from sensor_msgs.msg import Joy
+from sensor_msgs.msg import Joy, Imu
 from kaqu_controller.KaquCmdManager.KaquParams import RobotCommand, RobotState, BehaviorState, LegParameters
 from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController
 from kaqu_controller.Kaquctrl.RestController import RestController
 from kaqu_controller.Kaquctrl.SpeedTrotController import SpeedTrotGaitController
 from kaqu_controller.Kaquctrl.StairGaitController import StairTrotGaitController
 from std_msgs.msg import Float64MultiArray
-from sensor.msgs.msg import Imu
 
 # class StartController:
 #     def run(self, state, command):  # 인수 추가
@@ -58,7 +57,7 @@ class RobotManager(Node):
         self.rest_controller = RestController(self.default_stance())
         # self.start_controller = StartController()
         self.start_controller = SpeedTrotGaitController(self.default_stance(), self.trot_gait_param.stance_time, self.trot_gait_param.swing_time, self.trot_gait_param.time_step, use_imu=imu)
-        self.stair_controller = StairTrotGaitController(self.default_stance()) #수정 필요 
+        self.stair_controller = StairTrotGaitController(self.default_stance(), self.trot_gait_param.stance_time, self.trot_gait_param.swing_time, self.trot_gait_param.time_step, use_imu=imu) #수정 필요 
 
         # 기본 컨트롤러 설정 (Rest 상태)
         self.current_controller = self.rest_controller
@@ -154,6 +153,9 @@ class RobotManager(Node):
         rpy = rotation.as_euler('xyz', degrees=False)  # false 하면 라디안
         self.state.imu_roll = rpy[0]
         self.state.imu_pitch = rpy[1]
+        self.get_logger().info(
+            f"Roll: {np.degrees(self.state.imu_roll):.2f}°, Pitch: {np.degrees(self.state.imu_pitch):.2f}°, Yaw: {np.degrees(rpy[2]):.2f}°"
+        )
 
     def run(self):
         """현재 활성화된 컨트롤러 실행."""
