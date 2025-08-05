@@ -40,18 +40,18 @@ joint_group_position_controller:
       - velocity
       - effort
     gains:
-      fr_mainbodyhip_joint: {p: 12, i: 0.01, d: 0.1}
-      fr_hip1_joint:        {p: 12, i: 0.01, d: 0.1}
-      fr_14_joint:          {p: 12, i: 0.01, d: 0.1}
-      fl_mainbodyhip_joint: {p: 12, i: 0.01, d: 0.1}
-      fl_hip1_joint:        {p: 12, i: 0.01, d: 0.1}
-      fl_14_joint:          {p: 12, i: 0.01, d: 0.1}
-      rr_mainbodyhip_joint: {p: 12, i: 0.01, d: 0.1}
-      rr_hip1_joint:        {p: 12, i: 0.01, d: 0.1}
-      rr_14_joint:          {p: 12, i: 0.01, d: 0.1}
-      rl_mainbodyhip_joint: {p: 12, i: 0.01, d: 0.1}
-      rl_hip1_joint:        {p: 12, i: 0.01, d: 0.1}
-      rl_14_joint:          {p: 12, i: 0.01, d: 0.1}
+      fr_mainbodyhip_joint: {p: 5, i: 0.01, d: 0.1}
+      fr_hip1_joint:        {p: 5, i: 0.01, d: 0.1}
+      fr_14_joint:          {p: 5, i: 0.01, d: 0.1}
+      fl_mainbodyhip_joint: {p: 5, i: 0.01, d: 0.1}
+      fl_hip1_joint:        {p: 5, i: 0.01, d: 0.1}
+      fl_14_joint:          {p: 5, i: 0.01, d: 0.1}
+      rr_mainbodyhip_joint: {p: 5, i: 0.01, d: 0.1}
+      rr_hip1_joint:        {p: 5, i: 0.01, d: 0.1}
+      rr_14_joint:          {p: 5, i: 0.01, d: 0.1}
+      rl_mainbodyhip_joint: {p: 5, i: 0.01, d: 0.1}
+      rl_hip1_joint:        {p: 5, i: 0.01, d: 0.1}
+      rl_14_joint:          {p: 5, i: 0.01, d: 0.1}
 
 joint_state_broadcaster:
   ros__parameters:
