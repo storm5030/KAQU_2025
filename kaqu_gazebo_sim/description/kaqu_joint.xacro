@@ -4,8 +4,8 @@
     <xacro:include filename="$(find kaqu_gazebo_sim)/description/kaqu.gazebo" />
     <xacro:include filename="$(find kaqu_gazebo_sim)/description/kaqu.trans" />
     
-    <xacro:property name="effort_limit" value="10.0" />
-    <xacro:property name="velocity_limit" value="3.0" />
+    <xacro:property name="effort_limit" value="3.0" />
+    <xacro:property name="velocity_limit" value="8.0" />
     
 
     <joint name="fl_mainbodyhip_joint" type="revolute">
