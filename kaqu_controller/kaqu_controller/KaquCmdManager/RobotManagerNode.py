@@ -10,7 +10,7 @@ from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController
 from kaqu_controller.Kaquctrl.RestController import RestController
 from kaqu_controller.Kaquctrl.SpeedTrotController import SpeedTrotGaitController
 from std_msgs.msg import Float64MultiArray
-
+from sensor.msgs.msg import Imu
 
 # class StartController:
 #     def run(self, state, command):  # 인수 추가
@@ -61,6 +61,9 @@ class RobotManager(Node):
         # 기본 컨트롤러 설정 (Rest 상태)
         self.current_controller = self.rest_controller
         self.state.behavior_state = BehaviorState.REST
+        self.imu_subscription = self.create_subscription(
+            Imu, '/imu', self.imu_orientation, 10
+        )
 
     def default_stance(self):
         """기본 자세를 정의합니다 (4개의 발 위치)."""
@@ -144,6 +147,7 @@ class RobotManager(Node):
             #self.get_logger().info(f"Published angle: {angle_msg.data}")
         except ValueError:
             self.get_logger().warn(f"Invalid angle result: {result}")
+    
 
 import time
 
