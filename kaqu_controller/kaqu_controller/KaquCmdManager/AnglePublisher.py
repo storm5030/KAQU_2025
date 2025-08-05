@@ -50,7 +50,7 @@ class QuadrupedControllerNode(Node):
         ]
 
         # 주기적으로 main_control 호출
-        self.timer = self.create_timer(0.02, self.main_control)  # 0.1초 간격
+        self.timer = self.create_timer(0.05, self.main_control)  # 0.1초 간격
         self.leg_pos = None
 
     def sub_call(self, msg):
