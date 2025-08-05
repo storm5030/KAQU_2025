@@ -57,7 +57,7 @@ class TrotGaitController(GaitController):
         #     0     0      0     0
 
         # TODO : 게인값 조율
-        self.pid_controller = PID_controller(0., 0., 0.)  # 게인이 0이라 효력 X
+        self.pid_controller = PID_controller(0.15, 0.02, 0.002)  # 게인이 0이라 효력 X
 
     # 선속도와 각속도를 스케일링
     def updateStateCommand(self, msg, state, command):
@@ -91,28 +91,29 @@ class TrotGaitController(GaitController):
                 new_foot_locations[:, leg_index] = new_location
        
 
-            # # imu compensation IMU 보정
-            # if self.use_imu:
-            #     compensation = self.pid_controller.run(state.imu_roll, state.imu_pitch)
-            #     roll_compensation = -compensation[0]
-            #     pitch_compensation = -compensation[1]
+            # imu compensation IMU 보정
+            if self.use_imu:
+                compensation = self.pid_controller.run(state.imu_roll, state.imu_pitch)
+                roll_compensation = -compensation[0]
+                pitch_compensation = -compensation[1]
 
-            #     rot = rotxyz(roll_compensation, pitch_compensation, 0)
-            #     new_foot_locations = np.matmul(rot, new_foot_locations)
-            # 뭔가 다르게 보정해야 되긴 하지만 일단 이걸로 된다면 오케입니다
-            # if True:
-            #     roll_compensation = 0.0
-            #     pitch_compensation = 0.05
-
-            #     rot = rotxyz(roll_compensation, pitch_compensation, 0)
-            #     new_foot_locations = np.matmul(rot, new_foot_locations)
-
+                rot = rotxyz(roll_compensation,pitch_compensation,0)
+                new_foot_locations = np.matmul(rot,new_foot_locations)
+                
             state.ticks += 1
             return new_foot_locations
 
         else:  # 안 움직이고 있으면
             temp = self.default_stance.copy()
-            temp[2] = [command.robot_height] * 4   
+            temp[2] = [command.robot_height] * 4
+            # imu센서값을 멈출 때도 보정하기
+            if self.use_imu:
+                compensation = self.pid_controller.run(state.imu_roll, state.imu_pitch)
+                roll_compensation = -compensation[0]
+                pitch_compensation = -compensation[1]
+
+                rot = rotxyz(roll_compensation, pitch_compensation, 0)
+                temp = np.matmul(rot, temp)
 
             return temp
 
