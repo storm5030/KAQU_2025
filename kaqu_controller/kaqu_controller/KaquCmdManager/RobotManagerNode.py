@@ -9,6 +9,7 @@ from kaqu_controller.KaquCmdManager.KaquParams import RobotCommand, RobotState, 
 from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController
 from kaqu_controller.Kaquctrl.RestController import RestController
 from kaqu_controller.Kaquctrl.SpeedTrotController import SpeedTrotGaitController
+from kaqu_controller.Kaquctrl.StairGaitController import StairTrotGaitController
 from std_msgs.msg import Float64MultiArray
 
 
@@ -57,6 +58,7 @@ class RobotManager(Node):
         self.rest_controller = RestController(self.default_stance())
         # self.start_controller = StartController()
         self.start_controller = SpeedTrotGaitController(self.default_stance(), self.trot_gait_param.stance_time, self.trot_gait_param.swing_time, self.trot_gait_param.time_step, use_imu=imu)
+        self.stair_controller = StairTrotGaitController(self.default_stance()) #수정 필요 
 
         # 기본 컨트롤러 설정 (Rest 상태)
         self.current_controller = self.rest_controller
@@ -80,14 +82,22 @@ class RobotManager(Node):
             self.command.start_event = True
             self.command.trot_event = False
             self.command.rest_event = False
+            self.command.stair_event = False
         elif msg.buttons[1]:  # Trot 버튼
             self.command.start_event = False
             self.command.trot_event = True
             self.command.rest_event = False
+            self.command.stair_event = False
         elif msg.buttons[2]:  # Rest 버튼
             self.command.start_event = False
             self.command.trot_event = False
             self.command.rest_event = True
+            self.command.stair_event = False
+        elif msg.buttons[3]:  # Stair 버튼
+            self.command.start_event = False
+            self.command.trot_event = False
+            self.command.rest_event = False
+            self.command.stair_event = True
 
         if self.current_controller == self.rest_controller:
             self.current_controller.updateStateCommand(msg, self.state, self.command)
@@ -95,6 +105,8 @@ class RobotManager(Node):
             self.current_controller.updateStateCommand(msg, self.state, self.command)
         elif self.current_controller == self.start_controller:
             self.current_controller.updateStateCommand(msg, self.command)
+        elif self.current_controller == self.stair_controller:
+            self.current_controller.updateStateCommand(msg, self.command) ##수정필요
 
     def gait_changer(self):
         """명령에 따라 행동 상태와 컨트롤러를 변경."""
@@ -114,12 +126,22 @@ class RobotManager(Node):
                 self.get_logger().info("Switched to Trot Controller")
             self.command.trot_event = False
 
+        elif self.command.stair_event:
+            if self.state.behavior_state == BehaviorState.REST:
+                self.state.behavior_state = BehaviorState.STAIR
+                self.current_controller = self.stair_controller
+                self.current_controller.pid_controller.reset()
+                self.state.ticks = 0
+                self.get_logger().info("Switched to Stair Controller")
+            self.command.stair_event = False
+
         elif self.command.rest_event:
             self.state.behavior_state = BehaviorState.REST
             self.current_controller = self.rest_controller
             self.current_controller.pid_controller.reset()
             self.get_logger().info("Switched to Rest Controller")
             self.command.rest_event = False
+
 
         print(f"Behavior State: {self.state.behavior_state}, Current Controller: {self.current_controller}")
 

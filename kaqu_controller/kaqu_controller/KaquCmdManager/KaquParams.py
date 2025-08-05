@@ -8,6 +8,7 @@ class BehaviorState(Enum):
     START = 0
     TROT = 1
     REST = 2
+    STAIR = 3
 
 class RobotState(object):
     def __init__(self, default_height):  # 0.1아님
