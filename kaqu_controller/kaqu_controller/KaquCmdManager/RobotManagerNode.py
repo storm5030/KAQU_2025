@@ -4,7 +4,7 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation as R
-from sensor_msgs.msg import Joy
+from sensor_msgs.msg import Joy, Imu
 from kaqu_controller.KaquCmdManager.KaquParams import RobotCommand, RobotState, BehaviorState, LegParameters
 from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController
 from kaqu_controller.Kaquctrl.RestController import RestController
@@ -27,7 +27,13 @@ class RobotManager(Node):
         super().__init__('robot_manager')
 
         self.subscription = self.create_subscription(
-            Joy, '/joy', self.joystick_callback, 10
+            Joy, '/joy', self.joystick_callback, 100
+        )
+        self.subscription_imu = self.create_subscription(
+            Imu,
+            '/imu',
+            self.imu_orientation,
+            100
         )
 
         self.angle_publisher = self.create_publisher(Float64MultiArray, '/legpo', 10)
@@ -61,6 +67,8 @@ class RobotManager(Node):
         # 기본 컨트롤러 설정 (Rest 상태)
         self.current_controller = self.rest_controller
         self.state.behavior_state = BehaviorState.REST
+
+        self.timer = self.create_timer(0.05, self.main_loop)  # 50Hz 루프 시작
 
     def default_stance(self):
         """기본 자세를 정의합니다 (4개의 발 위치)."""
@@ -125,7 +133,8 @@ class RobotManager(Node):
 
     def imu_orientation(self, msg):
         quaternion = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
-        rpy = R.from_quat(quaternion)
+        rotation = R.from_quat(quaternion)  # Rotation 객체
+        rpy = rotation.as_euler('xyz', degrees=False)  # numpy ndarray 반환
         self.state.imu_roll = rpy[0]
         self.state.imu_pitch = rpy[1]
 
@@ -144,7 +153,12 @@ class RobotManager(Node):
         except ValueError:
             self.get_logger().warn(f"Invalid angle result: {result}")
 
-import time
+    def main_loop(self):
+        """타이머 루프에서 주기적으로 실행될 함수."""
+        self.gait_changer()
+        self.result = self.run()
+        self.get_logger().info(f"Controller result: \n{self.result}")
+        self.publish_angle(self.result)
 
 def main(args=None):
     rclpy.init(args=args)
@@ -155,22 +169,16 @@ def main(args=None):
     x_shift_front = 0#42
     x_shift_back = 24#-15
     imu = True
-
+    
     robot_manager = RobotManager(body_dimensions, leg_dimensions, default_height, x_shift_front, x_shift_back, imu)
-
+   
     try:
-        while rclpy.ok():
-            rclpy.spin_once(robot_manager, timeout_sec=0.02)
-            robot_manager.gait_changer()
-            result = robot_manager.run()
-            robot_manager.get_logger().info(f"Controller result: \n{result}")
-            robot_manager.publish_angle(result)
-
+        rclpy.spin(robot_manager)
     except KeyboardInterrupt:
         robot_manager.get_logger().info("Shutting down RobotManager.")
-
-    robot_manager.destroy_node()
-    rclpy.shutdown()
+    finally:
+        robot_manager.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':
