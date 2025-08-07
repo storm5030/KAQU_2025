@@ -45,6 +45,7 @@ class LegParameters(object):
     def __init__(self):
         self.pose = self.Leg_Pose()
         self.gait = self.Trot_Gait_Param()
+        self.stair = self.Stair_Gait_Param()
         self.physical = self.Physical_Params()
     
     class Leg_Pose():

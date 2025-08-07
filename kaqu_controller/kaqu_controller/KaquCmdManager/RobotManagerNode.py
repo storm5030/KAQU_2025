@@ -45,6 +45,7 @@ class RobotManager(Node):
         # 상태 초기화
         self.state = RobotState(self.default_height)
         self.trot_gait_param = LegParameters.Trot_Gait_Param()
+        self.stair_gait_prarm = LegParameters.Stair_Gait_Param()
         self.command = RobotCommand(self.default_height)
         self.state.foot_location = self.default_stance()
 
@@ -57,7 +58,7 @@ class RobotManager(Node):
         self.rest_controller = RestController(self.default_stance())
         # self.start_controller = StartController()
         self.start_controller = SpeedTrotGaitController(self.default_stance(), self.trot_gait_param.stance_time, self.trot_gait_param.swing_time, self.trot_gait_param.time_step, use_imu=imu)
-        self.stair_controller = StairTrotGaitController(self.default_stance(), self.trot_gait_param.stance_time, self.trot_gait_param.swing_time, self.trot_gait_param.time_step, use_imu=imu) #수정 필요 
+        self.stair_controller = StairTrotGaitController(self.default_stance(), self.stair_gait_param.stance_time, self.stair_gait_param.swing_time, self.stair_gait_param.time_step, use_imu=imu) #수정 필요 
 
         # 기본 컨트롤러 설정 (Rest 상태)
         self.current_controller = self.rest_controller
