@@ -95,23 +95,33 @@ class TrotGaitController(GaitController):
                     swing_proportion = float(self.subphase_ticks(state.ticks)) / float(self.swing_ticks)
                     new_location = self.swingController.next_foot_location(swing_proportion, leg_index, state, command)
                 new_foot_locations[:, leg_index] = new_location
-       
-
+    
             # # imu compensation IMU 보정
-            # if self.use_imu:
-            #     compensation = self.pid_controller.run(state.imu_roll, state.imu_pitch)
-            #     roll_compensation = -compensation[0]
-            #     pitch_compensation = -compensation[1]
+            if self.use_imu: 
+               # IMU에서 받은 기울기 (deg → rad)
+                roll_rad = state.imu_roll * np.pi / 180.0
+                pitch_rad = state.imu_pitch * np.pi / 180.0
 
-            #     rot = rotxyz(roll_compensation, pitch_compensation, 0)
-            #     new_foot_locations = np.matmul(rot, new_foot_locations)
-            # 뭔가 다르게 보정해야 되긴 하지만 일단 이걸로 된다면 오케입니다
-            # if True:
-            #     roll_compensation = 0.0
-            #     pitch_compensation = 0.05
+                for leg_index in range(4):
+                    x = new_foot_locations[0, leg_index]
+                    y = new_foot_locations[1, leg_index]
 
-            #     rot = rotxyz(roll_compensation, pitch_compensation, 0)
-            #     new_foot_locations = np.matmul(rot, new_foot_locations)
+
+                   # pitch에 의한 z 보정 (x 위치 기준)
+                    dz_pitch = -x * np.tan(pitch_rad)
+
+
+                   # roll에 의한 z 보정 (y 위치 기준)
+                    dz_roll = -y * np.tan(roll_rad)
+
+
+                   # 최종 보정값
+                    dz = dz_pitch + dz_roll
+                    dz = max(min(dz, 30.0), -30.0)  # 과도한 보정 제한
+
+
+                   # z 좌표에만 보정 적용
+                    new_foot_locations[2, leg_index] += dz
 
             state.ticks += 1
             return new_foot_locations
