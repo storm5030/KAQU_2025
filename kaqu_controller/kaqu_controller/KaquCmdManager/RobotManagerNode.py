@@ -109,7 +109,7 @@ class RobotManager(Node):
         elif self.current_controller == self.start_controller:
             self.current_controller.updateStateCommand(msg, self.command)
         elif self.current_controller == self.stair_controller:
-            self.current_controller.updateStateCommand(msg, self.command) ##수정필요
+            self.current_controller.updateStateCommand(msg, self.state, self.command) ##수정필요
 
     def gait_changer(self):
         """명령에 따라 행동 상태와 컨트롤러를 변경."""
