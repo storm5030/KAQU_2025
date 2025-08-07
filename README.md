@@ -1,4 +1,7 @@
 # KAQU_2025
+Mynameis ChanwooLee
+dongryun
+
 - [1] ROS2 Humble
     
     https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html

@@ -8,6 +8,7 @@ class BehaviorState(Enum):
     START = 0
     TROT = 1
     REST = 2
+    STAIR = 3
 
 class RobotState(object):
     def __init__(self, default_height):  # 0.1아님
@@ -31,6 +32,7 @@ class RobotCommand(object):
         self.trot_event = False
         self.rest_event = False
         self.start_event = False
+        self.stair_event = False
         
         self.velocity = [0.0, 0.0]  # 속도 (x, y)
         self.yaw_rate = 0.0  # Yaw 회전 속도

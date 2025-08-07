@@ -4,13 +4,13 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation as R
-from sensor_msgs.msg import Joy
+from sensor_msgs.msg import Joy, Imu
 from kaqu_controller.KaquCmdManager.KaquParams import RobotCommand, RobotState, BehaviorState, LegParameters
 from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController
 from kaqu_controller.Kaquctrl.RestController import RestController
 from kaqu_controller.Kaquctrl.SpeedTrotController import SpeedTrotGaitController
+from kaqu_controller.Kaquctrl.StairGaitController import StairTrotGaitController
 from std_msgs.msg import Float64MultiArray
-
 
 # class StartController:
 #     def run(self, state, command):  # 인수 추가
@@ -57,10 +57,14 @@ class RobotManager(Node):
         self.rest_controller = RestController(self.default_stance())
         # self.start_controller = StartController()
         self.start_controller = SpeedTrotGaitController(self.default_stance(), self.trot_gait_param.stance_time, self.trot_gait_param.swing_time, self.trot_gait_param.time_step, use_imu=imu)
+        self.stair_controller = StairTrotGaitController(self.default_stance(), self.trot_gait_param.stance_time, self.trot_gait_param.swing_time, self.trot_gait_param.time_step, use_imu=imu) #수정 필요 
 
         # 기본 컨트롤러 설정 (Rest 상태)
         self.current_controller = self.rest_controller
         self.state.behavior_state = BehaviorState.REST
+        self.imu_subscription = self.create_subscription(
+            Imu, '/imu', self.imu_orientation, 10
+        )
 
     def default_stance(self):
         """기본 자세를 정의합니다 (4개의 발 위치)."""
@@ -80,14 +84,22 @@ class RobotManager(Node):
             self.command.start_event = True
             self.command.trot_event = False
             self.command.rest_event = False
+            self.command.stair_event = False
         elif msg.buttons[1]:  # Trot 버튼
             self.command.start_event = False
             self.command.trot_event = True
             self.command.rest_event = False
+            self.command.stair_event = False
         elif msg.buttons[2]:  # Rest 버튼
             self.command.start_event = False
             self.command.trot_event = False
             self.command.rest_event = True
+            self.command.stair_event = False
+        elif msg.buttons[3]:  # Stair 버튼
+            self.command.start_event = False
+            self.command.trot_event = False
+            self.command.rest_event = False
+            self.command.stair_event = True
 
         if self.current_controller == self.rest_controller:
             self.current_controller.updateStateCommand(msg, self.state, self.command)
@@ -95,6 +107,8 @@ class RobotManager(Node):
             self.current_controller.updateStateCommand(msg, self.state, self.command)
         elif self.current_controller == self.start_controller:
             self.current_controller.updateStateCommand(msg, self.command)
+        elif self.current_controller == self.stair_controller:
+            self.current_controller.updateStateCommand(msg, self.command) ##수정필요
 
     def gait_changer(self):
         """명령에 따라 행동 상태와 컨트롤러를 변경."""
@@ -114,6 +128,15 @@ class RobotManager(Node):
                 self.get_logger().info("Switched to Trot Controller")
             self.command.trot_event = False
 
+        elif self.command.stair_event:
+            if self.state.behavior_state == BehaviorState.REST:
+                self.state.behavior_state = BehaviorState.STAIR
+                self.current_controller = self.stair_controller
+                self.current_controller.pid_controller.reset()
+                self.state.ticks = 0
+                self.get_logger().info("Switched to Stair Controller")
+            self.command.stair_event = False
+
         elif self.command.rest_event:
             self.state.behavior_state = BehaviorState.REST
             self.current_controller = self.rest_controller
@@ -121,14 +144,18 @@ class RobotManager(Node):
             self.get_logger().info("Switched to Rest Controller")
             self.command.rest_event = False
 
+
         print(f"Behavior State: {self.state.behavior_state}, Current Controller: {self.current_controller}")
 
     def imu_orientation(self, msg):
-        quaternion = [msg.axes[0], msg.axes[1], msg.axes[7], 1]
+        quaternion = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
         rotation = R.from_quat(quaternion)
-        rpy = rotation.as_euler('xyz', degrees=True)  # false 하면 라디안
+        rpy = rotation.as_euler('xyz', degrees=False)  # false 하면 라디안
         self.state.imu_roll = rpy[0]
         self.state.imu_pitch = rpy[1]
+        self.get_logger().info(
+            f"Roll: {np.degrees(self.state.imu_roll):.2f}°, Pitch: {np.degrees(self.state.imu_pitch):.2f}°, Yaw: {np.degrees(rpy[2]):.2f}°"
+        )
 
     def run(self):
         """현재 활성화된 컨트롤러 실행."""
@@ -144,6 +171,7 @@ class RobotManager(Node):
             #self.get_logger().info(f"Published angle: {angle_msg.data}")
         except ValueError:
             self.get_logger().warn(f"Invalid angle result: {result}")
+    
 
 import time
 
