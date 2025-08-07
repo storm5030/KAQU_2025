@@ -9,12 +9,16 @@ from kaqu_controller.KaquIK.KinematicsCalculations import rotxyz, rotz
 from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
 
 class CrawlGaitController(GaitController):
-    def __init__(self, default_stance, stance_time, swing_time, time_step):
+    def __init__(self, default_stance, stance_time, swing_time, time_step, use_imu):
         contact_phases = np.array([[1, 1, 1, 0, 1, 1, 1, 1],    # 0: leg swing
                                    [1, 1, 1, 1, 1, 1, 1, 0],    # 1: Moving stance forward
                                    [1, 0, 1, 1, 1, 1, 1, 1],    
                                    [1, 1, 1, 1, 1, 0, 1, 1]])
-
+        self.use_imu = use_imu
+        self.autoRest = True
+        self.trotNeeded = True
+        leg = LegParameters()
+        
         z_error_constant = 0.02     # This constant determines how fast we move
                                     # toward the goal in the z axis
         

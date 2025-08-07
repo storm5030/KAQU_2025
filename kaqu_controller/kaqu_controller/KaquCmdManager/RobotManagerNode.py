@@ -8,7 +8,7 @@ from sensor_msgs.msg import Joy, Imu
 from kaqu_controller.KaquCmdManager.KaquParams import RobotCommand, RobotState, BehaviorState, LegParameters
 from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController
 from kaqu_controller.Kaquctrl.RestController import RestController
-from kaqu_controller.Kaquctrl.SpeedTrotController import SpeedTrotGaitController
+from kaqu_controller.Kaquctrl.CrawlGaitController import CrawlGaitController
 from std_msgs.msg import Float64MultiArray
 
 
@@ -51,6 +51,7 @@ class RobotManager(Node):
         # 상태 초기화
         self.state = RobotState(self.default_height)
         self.trot_gait_param = LegParameters.Trot_Gait_Param()
+        self.crawl_gait_param = LegParameters.Crawl_Gait_Param()
         self.command = RobotCommand(self.default_height)
         self.state.foot_location = self.default_stance()
 
@@ -62,7 +63,7 @@ class RobotManager(Node):
         # stance_time: unit_time*3 = 0.3, swing_time: unit_time*7 = 0.7, time_step: 0.1, imu
         self.rest_controller = RestController(self.default_stance())
         # self.start_controller = StartController()
-        self.start_controller = SpeedTrotGaitController(self.default_stance(), self.trot_gait_param.stance_time, self.trot_gait_param.swing_time, self.trot_gait_param.time_step, use_imu=imu)
+        self.start_controller = CrawlGaitController(self.default_stance(), self.crawl_gait_param.stance_time, self.crawl_gait_param.swing_time, self.crawl_gait_param.time_step, use_imu=imu)
 
         # 기본 컨트롤러 설정 (Rest 상태)
         self.current_controller = self.rest_controller
@@ -84,22 +85,32 @@ class RobotManager(Node):
 
     def joystick_callback(self, msg):
         """조이스틱 입력에 따라 이벤트를 설정."""
-        if msg.buttons[0]:  # Start 버튼
+        if msg.buttons[7]:  # Start 버튼
             self.command.start_event = True
             self.command.trot_event = False
             self.command.rest_event = False
+            self.command.crawl_event = False
         elif msg.buttons[1]:  # Trot 버튼
             self.command.start_event = False
             self.command.trot_event = True
             self.command.rest_event = False
+            self.command.crawl_event = False
         elif msg.buttons[2]:  # Rest 버튼
             self.command.start_event = False
             self.command.trot_event = False
             self.command.rest_event = True
+            self.command.crawl_event = False
+        elif msg.buttons[0]: # Crawl 버튼
+            self.command.start_event = False
+            self.command.trot_event = False
+            self.command.rest_event = False
+            self.command.crawl_event = True
 
         if self.current_controller == self.rest_controller:
             self.current_controller.updateStateCommand(msg, self.state, self.command)
         elif self.current_controller == self.trot_controller:
+            self.current_controller.updateStateCommand(msg, self.state, self.command)
+        elif self.current_controller == self.crawl_controller:
             self.current_controller.updateStateCommand(msg, self.state, self.command)
         elif self.current_controller == self.start_controller:
             self.current_controller.updateStateCommand(msg, self.command)

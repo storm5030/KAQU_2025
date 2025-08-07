@@ -31,6 +31,7 @@ class RobotCommand(object):
         self.trot_event = False
         self.rest_event = False
         self.start_event = False
+        self.crawl_event = False
         
         self.velocity = [0.0, 0.0]  # 속도 (x, y)
         self.yaw_rate = 0.0  # Yaw 회전 속도
@@ -43,6 +44,7 @@ class LegParameters(object):
     def __init__(self):
         self.pose = self.Leg_Pose()
         self.gait = self.Trot_Gait_Param()
+        self.crwal = self.Crawl_Gait_Param()
         self.physical = self.Physical_Params()
     
     class Leg_Pose():
@@ -52,7 +54,17 @@ class LegParameters(object):
         initial_pose = np.array([[0, 0, 0, 0],
                                [0, 0, 0, 0],
                                [0, 0, 0, 0]])
-    
+    class Crawl_Gait_Param():
+        def __init__(self):
+            self.cycle_time = None
+            self.stance_time = 0.2  # 0.18
+            self.swing_time = 0.2 #0.24
+            self.time_step = 0.05 #0.09
+            self.max_x_vel = 20 # 30
+            self.max_y_vel = 10
+            self.max_yaw_rate = 0.3
+            self.z_leg_lift = 40 #20
+
     class Trot_Gait_Param():
         def __init__(self):
             self.cycle_time = None
