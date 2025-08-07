@@ -1,6 +1,8 @@
 from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController
 from kaqu_controller.Kaquctrl.PIDController import PID_controller
 from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
+import numpy as np
+
 
 class StairTrotGaitController(TrotGaitController):
     def __init__(self, default_stance, stance_time, swing_time, time_step, use_imu):

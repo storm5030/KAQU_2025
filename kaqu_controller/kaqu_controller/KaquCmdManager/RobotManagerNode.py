@@ -58,7 +58,7 @@ class RobotManager(Node):
         self.rest_controller = RestController(self.default_stance())
         # self.start_controller = StartController()
         self.start_controller = SpeedTrotGaitController(self.default_stance(), self.trot_gait_param.stance_time, self.trot_gait_param.swing_time, self.trot_gait_param.time_step, use_imu=imu)
-        self.stair_controller = StairTrotGaitController(self.default_stance(), self.stair_gait_param.stance_time, self.stair_gait_param.swing_time, self.stair_gait_param.time_step, use_imu=imu) #수정 필요 
+        self.stair_controller = StairTrotGaitController(self.default_stance(), self.stair_gait_param.stance_time, self.stair_gait_param.swing_time, self.stair_gait_param.time_step, use_imu=imu)
 
         # 기본 컨트롤러 설정 (Rest 상태)
         self.current_controller = self.rest_controller
@@ -109,7 +109,7 @@ class RobotManager(Node):
         elif self.current_controller == self.start_controller:
             self.current_controller.updateStateCommand(msg, self.command)
         elif self.current_controller == self.stair_controller:
-            self.current_controller.updateStateCommand(msg, self.state, self.command) ##수정필요
+            self.current_controller.updateStateCommand(msg, self.state, self.command)
 
     def gait_changer(self):
         """명령에 따라 행동 상태와 컨트롤러를 변경."""
