@@ -14,6 +14,7 @@ class TrotGaitController(GaitController):
         #     0     0      0     0
         # stance_time: unit_time*3 = 0.3, swing_time: unit_time*7 = 0.7, time_step: 0.1, imu
         self.use_imu = use_imu
+        self.pid_controller = PID_controller(kp=1.0, ki=0.1, kd=0.05)  # PID 컨트롤러 인스턴스 생성
         self.use_button = True
         self.autoRest = True
         self.trotNeeded = True
@@ -98,9 +99,11 @@ class TrotGaitController(GaitController):
     
             # # imu compensation IMU 보정
             if self.use_imu: 
-               # IMU에서 받은 기울기 (deg → rad)
-                roll_rad = state.imu_roll * np.pi / 180.0
-                pitch_rad = state.imu_pitch * np.pi / 180.0
+               # IMU에서 받은 기울기 (deg)
+                roll_deg = state.imu_roll
+                pitch_deg = state.imu_pitch
+               # PID 컨트롤러를 이용해 roll/pitch 오차 보정
+                corrections = self.pid_controller.run(roll_deg, pitch_deg) 
 
                 for leg_index in range(4):
                     x = new_foot_locations[0, leg_index]
@@ -108,17 +111,16 @@ class TrotGaitController(GaitController):
 
 
                    # pitch에 의한 z 보정 (x 위치 기준)
-                    dz_pitch = -x * np.tan(pitch_rad)
+                    dz_pitch = -x * np.tan(np.radians(pitch_deg)) + corrections[1]
 
 
                    # roll에 의한 z 보정 (y 위치 기준)
-                    dz_roll = -y * np.tan(roll_rad)
+                    dz_roll = -y * np.tan(np.radians(roll_deg)) + corrections[0]
 
 
                    # 최종 보정값
                     dz = dz_pitch + dz_roll
-                    dz = max(min(dz, 30.0), -30.0)  # 과도한 보정 제한
-
+                    
 
                    # z 좌표에만 보정 적용
                     new_foot_locations[2, leg_index] += dz

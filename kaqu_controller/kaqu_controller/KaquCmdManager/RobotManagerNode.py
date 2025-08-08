@@ -45,7 +45,7 @@ class RobotManager(Node):
         # 상태 초기화
         self.state = RobotState(self.default_height)
         self.trot_gait_param = LegParameters.Trot_Gait_Param()
-        self.stair_gait_prarm = LegParameters.Stair_Gait_Param()
+        self.stair_gait_param = LegParameters.Stair_Gait_Param()
         self.command = RobotCommand(self.default_height)
         self.state.foot_location = self.default_stance()
 
