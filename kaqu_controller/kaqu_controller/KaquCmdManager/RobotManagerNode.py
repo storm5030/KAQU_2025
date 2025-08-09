@@ -66,6 +66,13 @@ class RobotManager(Node):
         self.imu_subscription = self.create_subscription(
             Imu, '/imu', self.imu_orientation, 10
         )
+        self.timer = self.create_timer(0.02, self.tick)
+    
+    def tick(self):
+        self.gait_changer
+        result = self.run()
+        self.publish_angle(result)
+        self.get_logger().info(f"Controller result: \n{result}")
 
     def default_stance(self):
         """기본 자세를 정의합니다 (4개의 발 위치)."""
@@ -174,8 +181,6 @@ class RobotManager(Node):
             self.get_logger().warn(f"Invalid angle result: {result}")
     
 
-import time
-
 def main(args=None):
     rclpy.init(args=args)
 
@@ -189,19 +194,12 @@ def main(args=None):
     robot_manager = RobotManager(body_dimensions, leg_dimensions, default_height, x_shift_front, x_shift_back, imu)
 
     try:
-        while rclpy.ok():
-            rclpy.spin_once(robot_manager, timeout_sec=0.02)
-            robot_manager.gait_changer()
-            result = robot_manager.run()
-            robot_manager.get_logger().info(f"Controller result: \n{result}")
-            robot_manager.publish_angle(result)
-
+        rclpy.spin(robot_manager)
     except KeyboardInterrupt:
         robot_manager.get_logger().info("Shutting down RobotManager.")
-
-    robot_manager.destroy_node()
-    rclpy.shutdown()
-
+    finally:
+        robot_manager.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
