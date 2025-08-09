@@ -66,10 +66,10 @@ class RobotManager(Node):
         self.imu_subscription = self.create_subscription(
             Imu, '/imu', self.imu_orientation, 10
         )
-        self.timer = self.create_timer(0.02, self.tick)
+        self.timer = self.create_timer(0.02, self.main_loop)
     
-    def tick(self):
-        self.gait_changer
+    def main_loop(self):
+        self.gait_changer()
         result = self.run()
         self.publish_angle(result)
         self.get_logger().info(f"Controller result: \n{result}")
