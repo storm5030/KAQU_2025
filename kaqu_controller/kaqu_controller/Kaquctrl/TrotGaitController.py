@@ -14,6 +14,7 @@ class TrotGaitController(GaitController):
         #     0     0      0     0
         # stance_time: unit_time*3 = 0.3, swing_time: unit_time*7 = 0.7, time_step: 0.1, imu
         self.use_imu = use_imu
+        self.pid_controller = PID_controller(kp=1.0, ki=0.1, kd=0.05)  # PID 컨트롤러 인스턴스 생성
         self.use_button = True
         self.autoRest = True
         self.trotNeeded = True
@@ -63,7 +64,6 @@ class TrotGaitController(GaitController):
         #     0     0      0     0
 
         # TODO : 게인값 조율
-        self.pid_controller = PID_controller(kp=1.0, ki=0.1, kd=0.05)  # PID 컨트롤러 인스턴스 생성
 
     # 선속도와 각속도를 스케일링
     def updateStateCommand(self, msg, state, command):
