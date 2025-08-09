@@ -87,42 +87,33 @@ class TrotGaitController(GaitController):
             contact_modes = self.contacts(state.ticks)  # 접지 배열 가져오기
             new_foot_locations = np.zeros((3, 4))
 
-            for leg_index in range(4):
-                contact_mode = contact_modes[leg_index]
-                if contact_mode == 1:  # 접지해 있다면 스탠스
-                    new_location = self.stanceController.next_foot_location(leg_index, state, command)
-                else:  # 아니라면 스윙 반환
-                    swing_proportion = float(self.subphase_ticks(state.ticks)) / float(self.swing_ticks)
-                    new_location = self.swingController.next_foot_location(swing_proportion, leg_index, state, command)
-                new_foot_locations[:, leg_index] = new_location
     
-            # # imu compensation IMU 보정
-            if self.use_imu: 
-               # IMU에서 받은 기울기 (deg)
+             # IMU 보정치를 먼저 계산합니다.
+            z_offsets = np.zeros(4)
+            if self.use_imu:
                 roll_deg = state.imu_roll
                 pitch_deg = state.imu_pitch
-               # PID 컨트롤러를 이용해 roll/pitch 오차 보정
-                corrections = self.pid_controller.run(roll_deg, pitch_deg) 
-
-                for leg_index in range(4):
-                    x = new_foot_locations[0, leg_index]
-                    y = new_foot_locations[1, leg_index]
-
-
-                   # pitch에 의한 z 보정 (x 위치 기준)
+                corrections = self.pid_controller.run(roll_deg, pitch_deg)
+                for i in range(4):
+                    # 새 위치가 아닌 현재 발 위치(state.foot_location)를 기준으로 오프셋을 계산합니다.
+                    x = state.foot_location[0, i]
+                    y = state.foot_location[1, i]
                     dz_pitch = -x * np.tan(np.radians(pitch_deg)) + corrections[1]
-
-
-                   # roll에 의한 z 보정 (y 위치 기준)
                     dz_roll = -y * np.tan(np.radians(roll_deg)) + corrections[0]
+                    z_offsets[i] = dz_pitch + dz_roll
 
+            for leg_index in range(4):
+                contact_mode = contact_modes[leg_index]
+                z_offset = z_offsets[leg_index] # 해당 다리의 z 오프셋
 
-                   # 최종 보정값
-                    dz = dz_pitch + dz_roll
-                    
-
-                   # z 좌표에만 보정 적용
-                    new_foot_locations[2, leg_index] += dz
+                if contact_mode == 1:
+                    # StanceController 호출 시 계산된 z_offset을 전달합니다.
+                    new_location = self.stanceController.next_foot_location(leg_index, state, command, z_offset)
+                else:
+                    swing_proportion = float(self.subphase_ticks(state.ticks)) / float(self.swing_ticks)
+                    # (추가 개선) SwingController에도 z_offset을 전달하여 착지 지점 높이를 보정할 수 있습니다.
+                    new_location = self.swingController.next_foot_location(swing_proportion, leg_index, state, command)
+                new_foot_locations[:, leg_index] = new_location
 
             state.ticks += 1
             return new_foot_locations
@@ -194,9 +185,12 @@ class TrotStanceController(object):
         self.time_step = time_step
         self.z_error_constant = z_error_constant
 
-    def position_delta(self, leg_index, state, command):
+    def position_delta(self, leg_index, state, command, z_offset=0.0):
         z = state.foot_location[2, leg_index]
         #z = command.robot_height
+
+        # 목표 높이에 IMU 보정치를 반영합니다.
+        target_z = state.robot_height + z_offset
 
         step_dist_x = command.velocity[0] * (float(self.phase_length) / self.swing_ticks)
         step_dist_y = command.velocity[1] * (float(self.phase_length) / self.swing_ticks)
@@ -204,16 +198,16 @@ class TrotStanceController(object):
         velocity = np.array([
             -(step_dist_x / 4) / (float(self.time_step) * self.stance_ticks),
             -(step_dist_y / 4) / (float(self.time_step) * self.stance_ticks),
-            1.0 / self.z_error_constant * (state.robot_height - z)
+            # 수정된 목표 높이(target_z)를 사용해 오차를 계산합니다.
+            1.0 / self.z_error_constant * (target_z - z)
         ])
 
         delta_pos = velocity * self.time_step
         delta_ori = rotz(-command.yaw_rate * self.time_step)
         return (delta_pos, delta_ori)
 
-    def next_foot_location(self, leg_index, state, command):
-        foot_location = state.foot_location[:, leg_index]  # 현재 다리 끝
-        (delta_pos, delta_ori) = self.position_delta(leg_index, state, command)
-        next_foot_location = np.matmul(delta_ori, foot_location) + delta_pos  # 이동해야 할 만큼 다리를 반대로 밀기
-        #next_foot_location[2] = -160
+    def next_foot_location(self, leg_index, state, command, z_offset=0.0):
+        foot_location = state.foot_location[:, leg_index]
+        (delta_pos, delta_ori) = self.position_delta(leg_index, state, command, z_offset) # z_offset 전달
+        next_foot_location = np.matmul(delta_ori, foot_location) + delta_pos
         return next_foot_location
