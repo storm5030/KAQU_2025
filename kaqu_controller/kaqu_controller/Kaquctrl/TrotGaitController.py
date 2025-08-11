@@ -88,14 +88,14 @@ class TrotGaitController(GaitController):
             new_foot_locations = np.zeros((3, 4))
 
     
-             # IMU 보정치를 먼저 계산합니다.
+             # IMU 보정치를 먼저 계산
             z_offsets = np.zeros(4)
             if self.use_imu:
                 roll_deg = state.imu_roll
                 pitch_deg = state.imu_pitch
                 corrections = self.pid_controller.run(roll_deg, pitch_deg)
                 for i in range(4):
-                    # 새 위치가 아닌 현재 발 위치(state.foot_location)를 기준으로 오프셋을 계산합니다.
+                    # 새 위치가 아닌 현재 발 위치(state.foot_location)를 기준으로 오프셋을 계산
                     x = state.foot_location[0, i]
                     y = state.foot_location[1, i]
                     dz_pitch = -x * np.tan(np.radians(pitch_deg)) + corrections[1]
@@ -107,12 +107,12 @@ class TrotGaitController(GaitController):
                 z_offset = z_offsets[leg_index] # 해당 다리의 z 오프셋
 
                 if contact_mode == 1:
-                    # StanceController 호출 시 계산된 z_offset을 전달합니다.
+                    # StanceController 호출 시 계산된 z_offset을 전달
                     new_location = self.stanceController.next_foot_location(leg_index, state, command, z_offset)
                 else:
                     swing_proportion = float(self.subphase_ticks(state.ticks)) / float(self.swing_ticks)
-                    # (추가 개선) SwingController에도 z_offset을 전달하여 착지 지점 높이를 보정할 수 있습니다.
-                    new_location = self.swingController.next_foot_location(swing_proportion, leg_index, state, command)
+                    # (추가 개선) SwingController에도 z_offset을 전달하여 착지 지점 높이를 보정
+                    new_location = self.swingController.next_foot_location(swing_proportion, leg_index, state, command, z_offset)
                 new_foot_locations[:, leg_index] = new_location
 
             state.ticks += 1
@@ -139,7 +139,7 @@ class TrotSwingController(object):
         self.z_leg_lift = z_leg_lift
         self.default_stance = default_stance
 
-    def raibert_touchdown_location(self, leg_index, command):
+    def raibert_touchdown_location(self, leg_index, command, z_offset=0.0):
         delta_pos_2d = np.array(command.velocity) * self.phase_length * self.time_step
         delta_pos = np.array([delta_pos_2d[0], delta_pos_2d[1], 0])
 
@@ -157,7 +157,7 @@ class TrotSwingController(object):
         return swing_height_
       
 
-    def next_foot_location(self, swing_prop, leg_index, state, command):  # leg_index = 몇 번째 다리인
+    def next_foot_location(self, swing_prop, leg_index, state, command, z_offset=0.0):  # leg_index = 몇 번째 다리인
         #assert 0 <= swing_prop <= 1  # 진행률
         swing_prop += (1/self.swing_ticks) #0 ~ 0.9 -> 0.1~1.0
         foot_location = state.foot_location[:, leg_index]
@@ -174,7 +174,7 @@ class TrotSwingController(object):
         velocity = (touchdown_location - foot_location) / float(time_left) * np.array([1, 1, 0])
 
         delta_foot_location = velocity * self.time_step  # 이번 스텝에서 foot_location이 얼마나 이동할지
-        z_vector = np.array([0, 0, swing_height_ + command.robot_height])  # 스윙 중 추가로 들어 올리기 + 로봇 몸체가 원하는 기본 높이\
+        z_vector = np.array([0, 0, swing_height_ + command.robot_height + z_offset])  # 스윙 중 추가로 들어 올리기 + 로봇 몸체가 원하는 기본 높이\
         return foot_location * np.array([1, 1, 0]) + z_vector + delta_foot_location
 
 class TrotStanceController(object):
@@ -189,7 +189,7 @@ class TrotStanceController(object):
         z = state.foot_location[2, leg_index]
         #z = command.robot_height
 
-        # 목표 높이에 IMU 보정치를 반영합니다.
+        # 목표 높이에 IMU 보정치를 반영
         target_z = state.robot_height + z_offset
 
         step_dist_x = command.velocity[0] * (float(self.phase_length) / self.swing_ticks)
@@ -198,7 +198,7 @@ class TrotStanceController(object):
         velocity = np.array([
             -(step_dist_x / 4) / (float(self.time_step) * self.stance_ticks),
             -(step_dist_y / 4) / (float(self.time_step) * self.stance_ticks),
-            # 수정된 목표 높이(target_z)를 사용해 오차를 계산합니다.
+            # 수정된 목표 높이(target_z)를 사용해 오차를 계산
             1.0 / self.z_error_constant * (target_z - z)
         ])
 
