@@ -68,7 +68,7 @@ class TrotGaitController(GaitController):
     # 선속도와 각속도를 스케일링
     def updateStateCommand(self, msg, state, command):
         command.velocity[0] = msg.axes[4] * self.max_x_vel   # 앞뒤 움직임
-        command.velocity[1] = msg.axes[3] * self.max_y_vel * -1 #조이스틱 오른쪽: -1 / 왼쪽: +1 /// y축은 오른쪽을
+        command.velocity[1] = msg.axes[3] * self.max_y_vel #조이스틱 오른쪽: -1 / 왼쪽: +1 /// y축은 왼쪽 기준
         command.yaw_rate = msg.axes[6] * self.max_yaw_rate
 
         # print(f"Velocity X: {command.velocity[0]}, Y: {command.velocity[1]}, Yaw Rate: {command.yaw_rate}")
