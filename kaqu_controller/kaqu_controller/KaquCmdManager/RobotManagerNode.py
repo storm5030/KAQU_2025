@@ -45,6 +45,7 @@ class RobotManager(Node):
         # 상태 초기화
         self.state = RobotState(self.default_height)
         self.trot_gait_param = LegParameters.Trot_Gait_Param()
+        self.stair_gait_param = LegParameters.Stair_Gait_Param()
         self.command = RobotCommand(self.default_height)
         self.state.foot_location = self.default_stance()
 
@@ -57,7 +58,7 @@ class RobotManager(Node):
         self.rest_controller = RestController(self.default_stance())
         # self.start_controller = StartController()
         self.start_controller = SpeedTrotGaitController(self.default_stance(), self.trot_gait_param.stance_time, self.trot_gait_param.swing_time, self.trot_gait_param.time_step, use_imu=imu)
-        self.stair_controller = StairTrotGaitController(self.default_stance(), self.trot_gait_param.stance_time, self.trot_gait_param.swing_time, self.trot_gait_param.time_step, use_imu=imu) #수정 필요 
+        self.stair_controller = StairTrotGaitController(self.default_stance(), self.stair_gait_param.stance_time, self.stair_gait_param.swing_time, self.stair_gait_param.time_step, use_imu=imu)
 
         # 기본 컨트롤러 설정 (Rest 상태)
         self.current_controller = self.rest_controller
@@ -65,10 +66,10 @@ class RobotManager(Node):
         self.imu_subscription = self.create_subscription(
             Imu, '/imu', self.imu_orientation, 10
         )
-        self.timer = self.create_timer(0.02, self.tick)
+        self.timer = self.create_timer(0.02, self.main_loop)
     
-    def tick(self):
-        self.gait_changer
+    def main_loop(self):
+        self.gait_changer()
         result = self.run()
         self.publish_angle(result)
         self.get_logger().info(f"Controller result: \n{result}")
@@ -115,7 +116,7 @@ class RobotManager(Node):
         elif self.current_controller == self.start_controller:
             self.current_controller.updateStateCommand(msg, self.command)
         elif self.current_controller == self.stair_controller:
-            self.current_controller.updateStateCommand(msg, self.state, self.command) ##수정필요
+            self.current_controller.updateStateCommand(msg, self.state, self.command)
 
     def gait_changer(self):
         """명령에 따라 행동 상태와 컨트롤러를 변경."""
@@ -180,8 +181,6 @@ class RobotManager(Node):
             self.get_logger().warn(f"Invalid angle result: {result}")
     
 
-import time
-
 def main(args=None):
     rclpy.init(args=args)
 
@@ -201,7 +200,6 @@ def main(args=None):
     finally:
         robot_manager.destroy_node()
         rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()

@@ -1,12 +1,20 @@
 from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController
 from kaqu_controller.Kaquctrl.PIDController import PID_controller
+from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
+import numpy as np
+
 
 class StairTrotGaitController(TrotGaitController):
     def __init__(self, default_stance, stance_time, swing_time, time_step, use_imu):
         super().__init__(default_stance, stance_time, swing_time, time_step, use_imu)
 
         # 발 높이 조정
-
+        leg = LegParameters()
+        z_leg_lift = leg.stair.z_leg_lift
+        self.max_x_vel = leg.stair.max_x_vel 
+        self.max_y_vel = leg.stair.max_y_vel 
+        self.max_yaw_rate = leg.stair.max_yaw_rate
+        
         # PID 컨트롤러 객체 생성
         self.pid_controller = PID_controller(0.1, 0.0, 0.01)  # 이 숫자들은 임시 값 (kp, ki, kd)
         self.pid_controller.reset()  # 내부 변수들 초기화

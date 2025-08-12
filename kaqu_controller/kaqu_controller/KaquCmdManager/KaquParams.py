@@ -45,6 +45,7 @@ class LegParameters(object):
     def __init__(self):
         self.pose = self.Leg_Pose()
         self.gait = self.Trot_Gait_Param()
+        self.stair = self.Stair_Gait_Param()
         self.physical = self.Physical_Params()
     
     class Leg_Pose():
@@ -66,7 +67,20 @@ class LegParameters(object):
             self.max_y_vel = 10
             self.max_yaw_rate = 0.3
             self.z_leg_lift = 40 #20
-    
+
+    class Stair_Gait_Param():  # 계단 주행
+        def __init__(self):
+            self.cycle_time = None
+            unit_time = 0.1
+            self.stance_time = unit_time * 2.0
+            self.swing_time = unit_time * 2.6
+            self.time_step = 0.02
+            self.max_x_vel = 20
+            self.max_y_vel = 8
+            self.max_yaw_rate = 0.2
+            self.z_leg_lift = 80
+            self.robot_height = 180 
+
     class Physical_Params():
         l1 = 0.0
         l2 = 42.4
