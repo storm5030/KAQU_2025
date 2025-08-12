@@ -95,19 +95,19 @@ class TrotGaitController(GaitController):
         # # imu compensation IMU 보정
         if self.use_imu: 
             # IMU에서 받은 기울기 (deg)
-            roll_deg = state.imu_roll
-            pitch_deg = state.imu_pitch
+            roll = state.imu_roll
+            pitch = state.imu_pitch
             # PID 컨트롤러를 이용해 roll/pitch 오차 보정
-            corrections = [roll_deg, pitch_deg]
+            corrections = self.pid_controller.run(roll, pitch)
             for leg_index in range(4):
                 x = new_foot_locations[0, leg_index]
                 y = new_foot_locations[1, leg_index]
 
                 # pitch에 의한 z 보정 (x 위치 기준)
-                dz_pitch = -x * np.tan(corrections[1])
+                dz_pitch = x * np.tan(corrections[1])
 
                 # roll에 의한 z 보정 (y 위치 기준)
-                dz_roll = y * np.tan(corrections[0])
+                dz_roll = -y * np.tan(corrections[0])
 
                 # 최종 보정값
                 dz = dz_pitch + dz_roll
