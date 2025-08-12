@@ -3,7 +3,7 @@
     <static>true</static>
     <link name="ramp">
       <!-- pitch=15deg = 0.261799rad -->
-      <pose>0 0 0.08 0.261799 0 0</pose>
+      <pose>0 0 0.1 0.261799 0 0</pose>
       <collision name="col">
         <geometry><box><size>1.0 2.0 0.1</size></box></geometry>
         <surface>

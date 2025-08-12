@@ -35,19 +35,17 @@ class StairTrotGaitController(TrotGaitController):
             for leg_index in range(4):
                 x = new_foot_locations[0, leg_index]
                 y = new_foot_locations[1, leg_index]
+                z = new_foot_locations[2, leg_index]
 
-                # pitch에 의한 z 보정 (x 위치 기준)
-                dz_pitch = x * np.tan(corrections[1])
+                new_z = command.robot_height*np.cos(corrections[1])*np.cos(corrections[0])
+                dz = -1*(command.robot_height-new_z)
+                dx = (-1*new_z)*np.tan(corrections[1])
+                dy = (1*new_z)*np.tan(corrections[0])
 
-                # roll에 의한 z 보정 (y 위치 기준)
-                dz_roll = -y * np.tan(corrections[0])
-
-                # 최종 보정값
-                dz = dz_pitch + dz_roll
-                
-                # z 좌표에만 보정 적용
+                new_foot_locations[0, leg_index] += dx  
+                new_foot_locations[1, leg_index] += dy
                 new_foot_locations[2, leg_index] += dz
-
+                
         return new_foot_locations
 
         # IMU 기반 회전 보정 적용
