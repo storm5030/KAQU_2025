@@ -52,6 +52,5 @@ class StairTrotGaitController(TrotGaitController):
                 new_foot_locations[2, leg_index] += dz
 
         return new_foot_locations
-
         # IMU 기반 회전 보정 적용
         
