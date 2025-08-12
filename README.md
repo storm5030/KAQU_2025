@@ -1,12 +1,4 @@
 # KAQU_2025
-<<<<<<< HEAD
-Mynameis ChanwooLee
-dongryun
-=======
-최효린
-test
->>>>>>> StairGait
-
 - [1] ROS2 Humble
     
     https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html
