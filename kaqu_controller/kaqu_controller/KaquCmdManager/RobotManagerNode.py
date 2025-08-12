@@ -184,7 +184,7 @@ class RobotManager(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    body_dimensions = [155.0, 140.5] # [180.8, 148.4]
+    body_dimensions = [210.0, 140.5] # [180.8, 148.4]
     leg_dimensions = [0.0, 42.4, 101.0, 108.9]
     default_height = 160 #140?
     x_shift_front = 0#42
