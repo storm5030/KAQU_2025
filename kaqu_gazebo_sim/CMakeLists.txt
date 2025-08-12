@@ -44,10 +44,6 @@ install(TARGETS
   kaqu_gazebo_joint_ctrl_node  
   DESTINATION lib/${PROJECT_NAME}
 )
-
-install(DIRECTORY description/
-  DESTINATION share/${PROJECT_NAME}/description
-)
 # Install resources
 install(DIRECTORY
   config
@@ -55,6 +51,7 @@ install(DIRECTORY
   rviz
   launch
   worlds
+  models
   DESTINATION share/${PROJECT_NAME}
 )
 

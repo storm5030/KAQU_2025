@@ -50,5 +50,6 @@
     <depend>ros_gz_bridge</depend>
     <depend>ros_gz_image</depend>
     <depend>tf2</depend>
+    <gazebo_ros gazebo_model_path="${prefix}/models"/>
   </export>
 </package>

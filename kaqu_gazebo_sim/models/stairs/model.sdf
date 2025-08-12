@@ -1,0 +1,34 @@
+<sdf version="1.10">
+  <model name="stairs_3step">
+    <static>true</static>
+    <link name="stairs">
+      <!-- step1 -->
+      <collision name="c1">
+        <pose>0.15 0 0.025 0 0 0</pose>
+        <geometry><box><size>0.3 1.0 0.05</size></box></geometry>
+      </collision>
+      <visual name="v1">
+        <pose>0.15 0 0.025 0 0 0</pose>
+        <geometry><box><size>0.3 1.0 0.05</size></box></geometry>
+      </visual>
+      <!-- step2 -->
+      <collision name="c2">
+        <pose>0.45 0 0.075 0 0 0</pose>
+        <geometry><box><size>0.3 1.0 0.05</size></box></geometry>
+      </collision>
+      <visual name="v2">
+        <pose>0.45 0 0.075 0 0 0</pose>
+        <geometry><box><size>0.3 1.0 0.05</size></box></geometry>
+      </visual>
+      <!-- step3 -->
+      <collision name="c3">
+        <pose>0.75 0 0.125 0 0 0</pose>
+        <geometry><box><size>0.3 1.0 0.05</size></box></geometry>
+      </collision>
+      <visual name="v3">
+        <pose>0.75 0 0.125 0 0 0</pose>
+        <geometry><box><size>0.3 1.0 0.05</size></box></geometry>
+      </visual>
+    </link>
+  </model>
+</sdf>
