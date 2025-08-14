@@ -1,3 +1,5 @@
+# kaqu_controller/Kaquctrl/StairGaitController.py
+
 from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController
 from kaqu_controller.Kaquctrl.PIDController import PID_controller
 from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
@@ -8,49 +10,49 @@ class StairTrotGaitController(TrotGaitController):
     def __init__(self, default_stance, stance_time, swing_time, time_step, use_imu):
         super().__init__(default_stance, stance_time, swing_time, time_step, use_imu)
 
-        # 발 높이 조정
+        # 계단용 파라미터 반영
         leg = LegParameters()
-        z_leg_lift = leg.stair.z_leg_lift
-        self.max_x_vel = leg.stair.max_x_vel 
-        self.max_y_vel = leg.stair.max_y_vel 
-        self.max_yaw_rate = leg.stair.max_yaw_rate
-        
-        # PID 컨트롤러 객체 생성
-        self.pid_controller = PID_controller(0.1, 0.0, 0.01)  # 이 숫자들은 임시 값 (kp, ki, kd)
-        self.pid_controller.reset()  # 내부 변수들 초기화
+        self.stair = leg.stair                      # 계단용 파라미터 묶음
+        self.max_x_vel   = self.stair.max_x_vel
+        self.max_y_vel   = self.stair.max_y_vel
+        self.max_yaw_rate = self.stair.max_yaw_rate
+        # (z_leg_lift는 상위 TrotGaitController에서 사용될 수 있음)
 
-        # PID 보정 게인 조정 
+        # PID 컨트롤러 (IMU 보정용)
+        self.pid_controller = PID_controller(kp=0.1, ki=0.0, kd=0.01)
+        self.pid_controller.reset()
+
     def step(self, state, command):
-        new_foot_locations = super().step(state, command)  # 기존 보행 발 위치 계산
+        """
+        부모(TrotGaitController)의 step()으로 기본 발 위치를 만든 뒤,
+        IMU roll/pitch로 z 보정만 추가 적용해서 반환.
+        """
+        new_foot_locations = super().step(state, command)
 
-        if self.use_imu:
-            # 1. 현재 기울기 정보 (roll, pitch)
-            roll = state.imu_roll
-            pitch = state.imu_pitch
+        if not self.use_imu:
+            return new_foot_locations
 
-            # 2. PID 보정값 계산
-            compensation = self.pid_controller.run(roll, pitch)
-            roll_comp = -compensation[0]  # 음수로 반영
-            pitch_comp = -compensation[1]
+        # IMU 값(일반적으로 deg)을 PID로 한번 거쳐 보정 게인화
+        compensation = self.pid_controller.run(state.imu_roll, state.imu_pitch)
 
-            # 3. 각 다리에 보정값 적용
-            for leg_index in range(4):
-                x = new_foot_locations[0, leg_index]
-                y = new_foot_locations[1, leg_index]
+        # run()이 [roll, pitch] 형태를 준다고 가정(단일 스칼라가 오면 안전하게 처리)
+        if isinstance(compensation, (list, tuple)) and len(compensation) >= 2:
+            roll_comp, pitch_comp = float(compensation[0]), float(compensation[1])
+        else:
+            roll_comp, pitch_comp = float(compensation), 0.0
 
-                # pitch 보정 → z 보정값
-                dz_pitch = -x * np.tan(pitch_comp)
+        # deg -> rad (IMU가 deg면)
+        roll_rad  = np.deg2rad(roll_comp)
+        pitch_rad = np.deg2rad(pitch_comp)
 
-                # roll 보정 → z 보정값
-                dz_roll = -y * np.tan(roll_comp)
+        # 각 다리 z 보정: dz = (-y)*tan(roll) + (x)*tan(pitch)
+        for leg_idx in range(4):
+            x = new_foot_locations[0, leg_idx]
+            y = new_foot_locations[1, leg_idx]
 
-                # 최종 보정값
-                dz = dz_pitch + dz_roll
-                dz = max(min(dz, 30.0), -30.0)  # 클리핑
+            dz = (-y * np.tan(roll_rad)) + (x * np.tan(pitch_rad))
+            dz = np.clip(dz, -30.0, 30.0)  # 과한 보정 제한
 
-                # z값 보정 적용
-                new_foot_locations[2, leg_index] += dz
+            new_foot_locations[2, leg_idx] += dz
 
         return new_foot_locations
-        # IMU 기반 회전 보정 적용
-        
