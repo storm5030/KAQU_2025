@@ -63,7 +63,7 @@ class TrotGaitController(GaitController):
             else:
                 self.trotNeeded = True
 
-        print(f"Trot Needed: {self.trotNeeded}, Velocity: {command.velocity}, Yaw Rate: {command.yaw_rate}")
+        #print(f"Trot Needed: {self.trotNeeded}, Velocity: {command.velocity}, Yaw Rate: {command.yaw_rate}")
 
         if self.trotNeeded:  # 움직이고 있으면
             contact_modes = self.contacts(state.ticks)  # 접지 배열 가져오기

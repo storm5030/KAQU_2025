@@ -72,7 +72,7 @@ class RobotManager(Node):
         self.gait_changer()
         result = self.run()
         self.publish_angle(result)
-        self.get_logger().info(f"Controller result: \n{result}")
+        #self.get_logger().info(f"Controller result: \n{result}")
 
     def default_stance(self):
         """기본 자세를 정의합니다 (4개의 발 위치)."""
@@ -153,7 +153,7 @@ class RobotManager(Node):
             self.command.rest_event = False
 
 
-        print(f"Behavior State: {self.state.behavior_state}, Current Controller: {self.current_controller}")
+        #print(f"Behavior State: {self.state.behavior_state}, Current Controller: {self.current_controller}")
 
     def imu_orientation(self, msg):
         quaternion = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
