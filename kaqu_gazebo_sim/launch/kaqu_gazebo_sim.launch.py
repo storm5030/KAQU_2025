@@ -76,7 +76,7 @@ def generate_launch_description():
                 arguments=[
                     '-file', stairs_sdf,
                     '-name', 'stairs3',
-                    '-x', '1.0', '-y', '0.0', '-z', '0.0'
+                    '-x', '1.0', '-y', '0.0', '-z', '0.0', '-Y', '-1.5708'
                 ],
                 output='screen'
             )
