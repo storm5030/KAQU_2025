@@ -1,6 +1,7 @@
 from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController, TrotSwingController, TrotStanceController
 from kaqu_controller.Kaquctrl.PIDController import PID_controller
 from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
+from kaqu_controller.KaquIK.KinematicsCalculations import rotxyz, rotz
 import numpy as np
 
 
@@ -16,7 +17,7 @@ class StairTrotGaitController(TrotGaitController):
         self.max_yaw_rate = leg.stair.max_yaw_rate
         z_error_constant = 0.5*4 # This constant determines how fast we move toward the goal in the z direction
 
-        self.swingController = TrotSwingController(self.stance_ticks, self.swing_ticks, self.time_step,
+        self.swingController = StairSwingController(self.stance_ticks, self.swing_ticks, self.time_step,
                                                     self.phase_length, z_leg_lift, self.default_stance)
         
         self.stanceController = TrotStanceController(self.phase_length, self.stance_ticks, self.swing_ticks,
@@ -61,3 +62,46 @@ class StairTrotGaitController(TrotGaitController):
 
         # IMU 기반 회전 보정 적용
         
+class StairSwingController(TrotSwingController):
+    def __init__(self, stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance):
+        super().__init__(stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance)
+
+    def raibert_touchdown_location(self, leg_index, command, swing_phase):
+        if swing_phase < 0.5:
+            return self.default_stance[:, leg_index]
+        else:
+            delta_pos_2d = 2 * np.array(command.velocity) * self.phase_length * self.time_step
+            delta_pos = np.array([delta_pos_2d[0], delta_pos_2d[1], 0])
+
+            theta = self.stance_ticks * self.time_step * command.yaw_rate * 2
+            rotation = rotz(theta)
+
+            return np.matmul(rotation, self.default_stance[:, leg_index]) + delta_pos
+
+    def swing_height(self, swing_phase):  # 0.5까지는 들고 이후는 내려놓기
+        if swing_phase < 0.5:
+            swing_height_ = swing_phase / 0.5 * self.z_leg_lift
+        else:
+            swing_height_ = self.z_leg_lift * (1 - (swing_phase-0.5) / 0.5)
+        print(swing_phase, ": ", swing_height_, "\n")
+        return swing_height_
+    
+    def next_foot_location(self, swing_prop, leg_index, state, command):  # leg_index = 몇 번째 다리인
+        #assert 0 <= swing_prop <= 1  # 진행률
+        swing_prop += (1/self.swing_ticks) #0 ~ 0.9 -> 0.1~1.0
+        foot_location = state.foot_location[:, leg_index]
+        swing_height_ = self.swing_height(swing_prop)
+        touchdown_location = self.raibert_touchdown_location(leg_index, command, swing_prop)
+
+        time_left = self.time_step * self.swing_ticks * (1.0 - swing_prop)  # 남은 시간 계산
+        # 마지막 틱 예외처리
+        if swing_prop >= 1.0:
+            new_position = touchdown_location * np.array([1, 1, 0]) + np.array([0, 0, command.robot_height])
+            #[x,y,z]
+            return new_position
+        
+        velocity = (touchdown_location - foot_location) / float(time_left) * np.array([1, 1, 0])
+
+        delta_foot_location = velocity * self.time_step  # 이번 스텝에서 foot_location이 얼마나 이동할지
+        z_vector = np.array([0, 0, swing_height_ + command.robot_height])  # 스윙 중 추가로 들어 올리기 + 로봇 몸체가 원하는 기본 높이\
+        return foot_location * np.array([1, 1, 0]) + z_vector + delta_foot_location
