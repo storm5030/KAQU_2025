@@ -35,28 +35,29 @@ class StairTrotGaitController(TrotGaitController):
         new_foot_locations = state.foot_location.copy()
         # # imu compensation IMU 보정
         if self.use_imu:
-            roll  = state.imu_roll
+            roll = state.imu_roll
             pitch = state.imu_pitch
 
-            corrections = self.pid_controller.run(roll, pitch)  # [roll_corr, pitch_corr]
+            # 가드: 큰 기울기/전복 시 보정 OFF + PID 리셋
+            if self.imu_gate and (abs(roll) > self.th_off or abs(pitch) > self.th_off or getattr(state, "is_inverted", False)):
+                self.imu_gate = False
+                self.pid_controller.reset()
+            elif (not self.imu_gate) and (abs(roll) < self.th_on and abs(pitch) < self.th_on and not getattr(state, "is_inverted", False)):
+                self.imu_gate = True
 
-            # tan은 매 틱 한번만 계산
-            t_roll  = np.tan(corrections[0])  # roll 보정
-            t_pitch = np.tan(corrections[1])  # pitch 보정
-
-            for leg_index in range(4):
-                x = new_foot_locations[0, leg_index]
-                y = new_foot_locations[1, leg_index]
-
-            # z-only 보정 (TROT와 동일한 형태)
-            # pitch > 0 => 앞쪽(x>0) 발 내려감, roll > 0 => 오른쪽(y>0) 발 내려감
-                dz = x * t_pitch - y * t_roll
-                new_foot_locations[2, leg_index] += dz
+            if self.imu_gate:
+                corrections = self.pid_controller.run(roll, pitch)  # [roll_corr, pitch_corr]
+                t_roll  = np.tan(corrections[0])
+                t_pitch = np.tan(corrections[1])
+                for leg_index in range(4):
+                    x = new_foot_locations[0, leg_index]
+                    y = new_foot_locations[1, leg_index]
+                    # z-only 보정 (계단에서 XY 드리프트 방지)
+                    new_foot_locations[2, leg_index] += x * t_pitch - y * t_roll
 
                 
         return new_foot_locations
 
-        # IMU 기반 회전 보정 적용
         
 class StairSwingController(TrotSwingController):
     def __init__(self, stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance):

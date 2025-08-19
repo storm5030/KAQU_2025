@@ -23,6 +23,13 @@ class TrotGaitController(GaitController):
             out_limit=0.20, # 최대 보정각 ±0.20rad ≈ ±11.5°
             i_limit=0.10,   # 적분항 클램프
             deadband_deg=0.5)
+
+
+        # IMU 가드 상태/임계각(히스테리시스)
+        self.imu_gate = True
+        self.th_off = np.deg2rad(70)  # 이 이상 기울면 보정 OFF
+        self.th_on  = np.deg2rad(50)  # 이 이하로 복귀하면 보정 ON
+
         self.use_button = True
         self.autoRest = True
         self.trotNeeded = True
@@ -101,27 +108,27 @@ class TrotGaitController(GaitController):
 
         new_foot_locations = state.foot_location.copy()
         # # imu compensation IMU 보정
-        if self.use_imu: 
-            # IMU에서 받은 기울기 (deg)
+        if self.use_imu:
             roll = state.imu_roll
             pitch = state.imu_pitch
-            # PID 컨트롤러를 이용해 roll/pitch 오차 보정
-            corrections = self.pid_controller.run(roll, pitch)
-            for leg_index in range(4):
-                x = new_foot_locations[0, leg_index]
-                y = new_foot_locations[1, leg_index]
 
-                # pitch에 의한 z 보정 (x 위치 기준)
-                dz_pitch = x * np.tan(corrections[1])
+            # 가드: 큰 기울기/전복 시 보정 OFF + PID 리셋
+            # RobotManager에서 state.is_inverted을 세팅해줍니다.
+            if self.imu_gate and (abs(roll) > self.th_off or abs(pitch) > self.th_off or getattr(state, "is_inverted", False)):
+                self.imu_gate = False
+                self.pid_controller.reset()
+            elif (not self.imu_gate) and (abs(roll) < self.th_on and abs(pitch) < self.th_on and not getattr(state, "is_inverted", False)):
+                self.imu_gate = True
 
-                # roll에 의한 z 보정 (y 위치 기준)
-                dz_roll = -y * np.tan(corrections[0])
-
-                # 최종 보정값
-                dz = dz_pitch + dz_roll
-                
-                # z 좌표에만 보정 적용
-                new_foot_locations[2, leg_index] += dz
+            if self.imu_gate:
+                corrections = self.pid_controller.run(roll, pitch)  # [roll_corr, pitch_corr]
+                t_roll  = np.tan(corrections[0])
+                t_pitch = np.tan(corrections[1])
+                for leg_index in range(4):
+                    x = new_foot_locations[0, leg_index]
+                    y = new_foot_locations[1, leg_index]
+                    # z-only 보정
+                    new_foot_locations[2, leg_index] += x * t_pitch - y * t_roll
 
         return new_foot_locations
 

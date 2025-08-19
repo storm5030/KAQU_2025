@@ -44,6 +44,7 @@ class RobotManager(Node):
 
         # 상태 초기화
         self.state = RobotState(self.default_height)
+        self.state.is_inverted = False  # 전복 플래그(업벡터로 판단)
         self.trot_gait_param = LegParameters.Trot_Gait_Param()
         self.stair_gait_param = LegParameters.Stair_Gait_Param()
         self.command = RobotCommand(self.default_height)
@@ -156,14 +157,20 @@ class RobotManager(Node):
         #print(f"Behavior State: {self.state.behavior_state}, Current Controller: {self.current_controller}")
 
     def imu_orientation(self, msg):
-        quaternion = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
-        rotation = R.from_quat(quaternion)
-        rpy = rotation.as_euler('xyz', degrees=False)  # false 하면 라디안
-        self.state.imu_roll = rpy[0]
+        q = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
+        rotation = R.from_quat(q)
+        rpy = rotation.as_euler('xyz', degrees=False)
+
+        self.state.imu_roll  = rpy[0]
         self.state.imu_pitch = rpy[1]
+
+         # 본체 z축(up vector)의 월드 z성분
+        up_z = rotation.apply([0, 0, 1])[2]
+        self.state.is_inverted = (up_z < 0.0)  # 뒤집힘 감지
+
+         # 로그는 보기 좋게 도 단위로
         self.get_logger().info(
-            f"Roll: {np.degrees(self.state.imu_roll):.2f}°, Pitch: {np.degrees(self.state.imu_pitch):.2f}°, Yaw: {np.degrees(rpy[2]):.2f}°"
-        )
+            f"Roll: {np.degrees(self.state.imu_roll):.2f}°, Pitch: {np.degrees(self.state.imu_pitch):.2f}°, Yaw: {np.degrees(rpy[2]):.2f}°")
 
     def run(self):
         """현재 활성화된 컨트롤러 실행."""
