@@ -44,17 +44,28 @@ class StairTrotGaitController(TrotGaitController):
                 self.pid_controller.reset()
             elif (not self.imu_gate) and (abs(roll) < self.th_on and abs(pitch) < self.th_on and not getattr(state, "is_inverted", False)):
                 self.imu_gate = True
-
-            if self.imu_gate:
-                corrections = self.pid_controller.run(roll, pitch) 
-                t_roll  = np.tan(corrections[0])
-                t_pitch = np.tan(corrections[1])
+            if self.use_imu: 
+            # IMU에서 받은 기울기 (deg)
+                roll = state.imu_roll
+                pitch = state.imu_pitch
+                # PID 컨트롤러를 이용해 roll/pitch 오차 보정
+                corrections = [roll, pitch]
+                corrections = self.pid_controller.run(roll, pitch)
+                # corrections *= -1
                 for leg_index in range(4):
-                    x = new_foot_locations[0, leg_index]
-                    y = new_foot_locations[1, leg_index]
-                    # z-only 보정 (계단에서 XY 드리프트 방지)
-                    new_foot_locations[2, leg_index] += x * t_pitch - y * t_roll
+                    # x = new_foot_locations[0, leg_index]
+                    # y = new_foot_locations[1, leg_index]
+                    # z = new_foot_locations[2, leg_index]
 
+                    new_z = command.robot_height*np.cos(corrections[1])*np.cos(corrections[0])
+                    dz = -1*(command.robot_height-new_z)
+                    new_foot_locations[2, leg_index] += dz
+
+                    dx = (-1*new_foot_locations[2,leg_index])*np.tan(corrections[1])
+                    dy = (1*new_foot_locations[2,leg_index])*np.tan(corrections[0])
+
+                    new_foot_locations[0, leg_index] += dx  
+                    new_foot_locations[1, leg_index] += dy
                 
         return new_foot_locations
 
