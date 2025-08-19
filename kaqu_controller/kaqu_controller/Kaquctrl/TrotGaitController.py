@@ -14,7 +14,15 @@ class TrotGaitController(GaitController):
         #     0     0      0     0
         # stance_time: unit_time*3 = 0.3, swing_time: unit_time*7 = 0.7, time_step: 0.1, imu
         self.use_imu = use_imu
-        self.pid_controller = PID_controller(0.15, 0.02, 0.002)  # PID 컨트롤러 인스턴스 생성
+        self.pid_controller = PID_controller(
+            kp=0.12,    # P
+            ki=0.30,    # I (느리게 쌓이게 하되 스파이크는 LPF가 잡음)
+            kd=0.01,    # D (미분 LPF 있어 과도한 증폭 완화)
+            meas_tau=0.15,  # 측정값 필터 시정수 (s)
+            d_tau=0.05,     # 미분항 필터 시정수 (s)
+            out_limit=0.20, # 최대 보정각 ±0.20rad ≈ ±11.5°
+            i_limit=0.10,   # 적분항 클램프
+            deadband_deg=0.5)
         self.use_button = True
         self.autoRest = True
         self.trotNeeded = True

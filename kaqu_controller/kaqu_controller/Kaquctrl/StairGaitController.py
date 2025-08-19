@@ -24,7 +24,7 @@ class StairTrotGaitController(TrotGaitController):
                                                       self.time_step, z_error_constant)
         
         # PID 컨트롤러 객체 생성
-        self.pid_controller = PID_controller(0.5, 0.02, 0.002)  # 이 숫자들은 임시 값 (kp, ki, kd)
+        self.pid_controller = PID_controller(0.12, 0.30, 0.01, 0.15, 0.05, 0.20, 0.10, 0.5)  # 이 숫자들은 임시 값 (kp, ki, kd, meas_tau, d_tau, out_limit, i_limit, deadband_deg)
         self.pid_controller.reset()  # 내부 변수들 초기화
 
         # PID 보정 게인 조정 
@@ -40,7 +40,7 @@ class StairTrotGaitController(TrotGaitController):
             pitch = state.imu_pitch
             # PID 컨트롤러를 이용해 roll/pitch 오차 보정
             corrections = [roll, pitch]
-            # corrections = self.pid_controller.run(roll, pitch)
+            corrections = self.pid_controller.run(roll, pitch)
             # corrections *= -1
             for leg_index in range(4):
                 # x = new_foot_locations[0, leg_index]

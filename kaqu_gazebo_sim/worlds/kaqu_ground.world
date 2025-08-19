@@ -5,7 +5,7 @@
     <!-- 전체 물리 엔진 설정 -->
     <physics name="1ms" type="ode">
       <max_step_size>0.002</max_step_size>
-      <real_time_update_rate>500</real_time_update_rate> 
+      <real_time_update_rate>200</real_time_update_rate> 
       <real_time_factor>1.0</real_time_factor>
       <gravity>0 0 -9.8</gravity> <!-- 중력 설정 -->
     </physics>
