@@ -157,21 +157,33 @@ class RobotManager(Node):
         #print(f"Behavior State: {self.state.behavior_state}, Current Controller: {self.current_controller}")
 
     def imu_orientation(self, msg):
-        q = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
-        rotation = R.from_quat(q)
+        # 1) 원시 쿼터니언
+        q_raw = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
+        rot_raw = R.from_quat(q_raw)
+
+        # 2) ★ IMU 마운트 보정 
+        #    필요하면 'x','y','z' 조합과 각도를 바꿔가며, z로 둬야 수평바닥에서 roll이 0으로 나옴
+        rot_mount = R.from_euler('z', np.pi)
+
+        # 3) 보정 적용
+        rotation = rot_mount * rot_raw
+
+        # 4) RPY(라디안) 저장
         rpy = rotation.as_euler('xyz', degrees=False)
 
         self.state.imu_roll  = rpy[0]
         self.state.imu_pitch = rpy[1]
 
-         # 본체 z축(up vector)의 월드 z성분
-        up_z = rotation.apply([0, 0, 1])[2]
-        self.state.is_inverted = (up_z < 0.0)  # 뒤집힘 감지
+        # 5) 전복 감지: body z축(up vector)의 월드 z성분
+        up_z = rotation.apply([0.0, 0.0, 1.0])[2]
+        self.state.is_inverted = (up_z < -0.2)  # 약간의 여유(히스테리시스) 줌
 
-         # 로그는 보기 좋게 도 단위로
+        # 6) 보기용 로그(도 단위)
         self.get_logger().info(
-            f"Roll: {np.degrees(self.state.imu_roll):.2f}°, Pitch: {np.degrees(self.state.imu_pitch):.2f}°, Yaw: {np.degrees(rpy[2]):.2f}°")
-
+            f"Roll: {np.degrees(self.state.imu_roll):.2f}°, "
+            f"Pitch: {np.degrees(self.state.imu_pitch):.2f}°, "
+            f"Yaw: {np.degrees(rpy[2]):.2f}°")
+    
     def run(self):
         """현재 활성화된 컨트롤러 실행."""
         return self.current_controller.run(self.state, self.command)
