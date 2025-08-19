@@ -4,7 +4,7 @@
     <xacro:include filename="$(find kaqu_gazebo_sim)/description/kaqu.gazebo" />
     <xacro:include filename="$(find kaqu_gazebo_sim)/description/kaqu.trans" />
     
-    <xacro:property name="effort_limit" value="20.0" />
+    <xacro:property name="effort_limit" value="10.0" />
     <xacro:property name="velocity_limit" value="10.0" />
     
 
@@ -205,28 +205,28 @@
         </ros2_control>
     </joint>
 
-     <!-- <joint name="fl_foot_sphere_joint" type="fixed">
+     <joint name="fl_foot_joint" type="fixed">
         <parent link="fl_leg4_1"/>
-        <child link="fl_foot_sphere"/>
-        <origin xyz="0 0.1 0" rpy="0 0 0"/>
+        <child link="fl_foot"/>
+        <origin xyz="-0.007 0.103 0.002" rpy="0 0 0"/>
      </joint>
 
-      <joint name="fr_foot_sphere_joint" type="fixed">
+      <joint name="fr_foot_joint" type="fixed">
         <parent link="fr_leg4_1"/>
-        <child link="fr_foot_sphere"/>
-        <origin xyz="0 0.1 0" rpy="0 0 0"/>
+        <child link="fr_foot"/>
+        <origin xyz="0.007 0.103 0.002" rpy="0 0 0"/>
      </joint>
 
-      <joint name="rl_foot_sphere_joint" type="fixed">
+      <joint name="rl_foot_joint" type="fixed">
         <parent link="rl_leg4_1"/>
-        <child link="rl_foot_sphere"/>
-        <origin xyz="0 0.1 0" rpy="0 0 0"/>
+        <child link="rl_foot"/>
+        <origin xyz="-0.007 0.103 0.002" rpy="0 0 0"/>
      </joint>
 
-      <joint name="rr_foot_sphere_joint" type="fixed">
+      <joint name="rr_foot_joint" type="fixed">
         <parent link="rr_leg4_1"/>
-        <child link="rr_foot_sphere"/>
-        <origin xyz="0 0.1 0" rpy="0 0 0"/>
-     </joint> -->
+        <child link="rr_foot"/>
+        <origin xyz="0.007 0.103 0.002" rpy="0 0 0"/>
+     </joint>
 
 </robot>

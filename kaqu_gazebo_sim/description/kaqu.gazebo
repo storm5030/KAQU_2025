@@ -3,7 +3,11 @@
 
   <xacro:property name="body_color" value="Gazebo/Silver" />
 
-  <!-- <gazebo reference="base_link">
+
+    <!--mu1, mu2: 접촉면 마찰계수(서로 직각)
+        kq:접촉 강성 kd: 감쇄 계수(스프링처럼)-->
+
+  <gazebo reference="base_link">
     <material>${body_color}</material>
     <mu1>1.5</mu1>
     <mu2>1.5</mu2>
@@ -12,74 +16,9 @@
     <gravity>true</gravity>
   </gazebo>
 
-  <gazebo reference="fl_hip_1">
-    <material>${body_color}</material>
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
-    <kp>100000.0</kp>
-    <kd>1.0</kd>
-  </gazebo>
 
-  <gazebo reference="fr_hip_1">
+  <!-- <gazebo reference="fl_leg4_1">
     <material>${body_color}</material>
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
-    <kp>100000.0</kp>
-    <kd>1.0</kd>
-  </gazebo>
-
-  <gazebo reference="rl_hip_1">
-    <material>${body_color}</material>
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
-    <kp>100000.0</kp>
-    <kd>1.0</kd>
-  </gazebo>
-
-  <gazebo reference="rr_hip_1">
-    <material>${body_color}</material>
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
-    <kp>100000.0</kp>
-    <kd>1.0</kd>
-  </gazebo>
-
-  <gazebo reference="fl_leg1_1">
-    <material>${body_color}</material>
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
-    <kp>100000.0</kp>
-    <kd>1.0</kd>
-  </gazebo>
-
-  <gazebo reference="rl_leg1_1">
-    <material>${body_color}</material>
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
-    <kp>100000.0</kp>
-    <kd>1.0</kd>
-  </gazebo>
-
-  <gazebo reference="fr_leg1_1">
-    <material>${body_color}</material>
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
-    <kp>100000.0</kp>
-    <kd>1.0</kd>
-  </gazebo>
-
-  <gazebo reference="rr_leg1_1">
-    <material>${body_color}</material>
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
-    <kp>100000.0</kp>
-    <kd>1.0</kd>
-  </gazebo>
-  -->
-  <gazebo reference="fl_leg4_1">
-    <material>${body_color}</material>
-    <!--mu1, mu2: 접촉면 마찰계수(서로 직각)
-        kq:접촉 강성 kd: 감쇄 계수(스프링처럼)-->
     <mu1>1.5</mu1>
     <mu2>1.5</mu2>
     <kp>100000.0</kp>
@@ -108,6 +47,34 @@
     <mu2>1.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
+  </gazebo> -->
+
+  <gazebo reference="fl_foot">
+    <mu1>1.5</mu1>
+    <mu2>1.5</mu2>
+    <kp>100000.0</kp>
+    <kd>1.0</kd>
   </gazebo>
 
+  <gazebo reference="fr_foot">
+    <mu1>1.5</mu1>
+    <mu2>1.5</mu2>
+    <kp>100000.0</kp>
+    <kd>1.0</kd>
+  </gazebo>
+
+  <gazebo reference="rl_foot">
+    <mu1>1.5</mu1>
+    <mu2>1.5</mu2>
+    <kp>100000.0</kp>
+    <kd>1.0</kd>
+  </gazebo>
+
+  <gazebo reference="rr_foot">
+    <mu1>1.5</mu1>
+    <mu2>1.5</mu2>
+    <kp>100000.0</kp>
+    <kd>1.0</kd>
+  </gazebo>
+  
 </robot>
