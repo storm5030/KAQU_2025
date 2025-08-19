@@ -34,28 +34,24 @@ class StairTrotGaitController(TrotGaitController):
 
         new_foot_locations = state.foot_location.copy()
         # # imu compensation IMU 보정
-        if self.use_imu: 
-            # IMU에서 받은 기울기 (deg)
-            roll = state.imu_roll
+        if self.use_imu:
+            roll  = state.imu_roll
             pitch = state.imu_pitch
-            # PID 컨트롤러를 이용해 roll/pitch 오차 보정
-            corrections = [roll, pitch]
-            corrections = self.pid_controller.run(roll, pitch)
-            # corrections *= -1
+
+            corrections = self.pid_controller.run(roll, pitch)  # [roll_corr, pitch_corr]
+
+            # tan은 매 틱 한번만 계산
+            t_roll  = np.tan(corrections[0])  # roll 보정
+            t_pitch = np.tan(corrections[1])  # pitch 보정
+
             for leg_index in range(4):
-                # x = new_foot_locations[0, leg_index]
-                # y = new_foot_locations[1, leg_index]
-                # z = new_foot_locations[2, leg_index]
+                x = new_foot_locations[0, leg_index]
+                y = new_foot_locations[1, leg_index]
 
-                new_z = command.robot_height*np.cos(corrections[1])*np.cos(corrections[0])
-                dz = -1*(command.robot_height-new_z)
+            # z-only 보정 (TROT와 동일한 형태)
+            # pitch > 0 => 앞쪽(x>0) 발 내려감, roll > 0 => 오른쪽(y>0) 발 내려감
+                dz = x * t_pitch - y * t_roll
                 new_foot_locations[2, leg_index] += dz
-
-                dx = (-1*new_foot_locations[2,leg_index])*np.tan(corrections[1])
-                dy = (1*new_foot_locations[2,leg_index])*np.tan(corrections[0])
-
-                new_foot_locations[0, leg_index] += dx  
-                new_foot_locations[1, leg_index] += dy
 
                 
         return new_foot_locations
