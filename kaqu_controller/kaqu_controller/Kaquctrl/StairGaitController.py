@@ -68,8 +68,10 @@ class StairSwingController(TrotSwingController):
 
     def raibert_touchdown_location(self, leg_index, command, swing_phase):
         if swing_phase < 0.5:
+            # 발을 들 때는 제자리에서
             return self.default_stance[:, leg_index]
         else:
+            # 발을 내릴 때 진행 방향으로 뻗기
             delta_pos_2d = 2 * np.array(command.velocity) * self.phase_length * self.time_step
             delta_pos = np.array([delta_pos_2d[0], delta_pos_2d[1], 0])
 
