@@ -46,7 +46,7 @@ class StairTrotGaitController(TrotGaitController):
                 self.imu_gate = True
 
             if self.imu_gate:
-                corrections = self.pid_controller.run(roll, pitch)  # [roll_corr, pitch_corr]
+                corrections = self.pid_controller.run(roll, pitch) 
                 t_roll  = np.tan(corrections[0])
                 t_pitch = np.tan(corrections[1])
                 for leg_index in range(4):

@@ -67,7 +67,7 @@ class RestController:
         temp = self.default_stance.copy() #원본 파괴 방지
         temp[2] = [command.robot_height] * 4
 
-                # 사용자가 준 로컬 바디 기울기 적용
+        # 사용자가 준 로컬 바디 기울기 적용
         roll_cmd  = state.body_local_orientation[0]
         pitch_cmd = state.body_local_orientation[1]
         rot = rotxyz(roll_cmd, pitch_cmd, 0.0)

@@ -29,9 +29,9 @@ class PID_controller(object):
         self.d_tau = float(max(d_tau, 1e-6))
         self.out_limit = abs(out_limit)
         self.i_limit = abs(i_limit)
-        self.deadband = np.deg2rad(abs(deadband_deg))
+        self.deadband = np.deg2rad(abs(deadband_deg)) #라디안으로 저장
 
-        self.desired_roll_pitch = np.array([0.0, 0.0])
+        self.desired_roll_pitch = np.array([0.0, 0.0]) #목표값
         self.clock = Clock(clock_type=ClockType.ROS_TIME)
 
         self.initialized = False
@@ -40,8 +40,14 @@ class PID_controller(object):
     def reset(self):
         self.last_time = self.clock.now()
         self.last_error = np.array([0.0, 0.0])
-        self.meas_filt = np.array([0.0, 0.0])
-        self.d_filt = np.array([0.0, 0.0])
+
+
+        # LPF 상태
+        self.meas_filt = np.array([0.0, 0.0]) #roll, pitch 필터한 값
+        self.d_filt = np.array([0.0, 0.0]) #미분항 필터한 값
+
+
+        #적분항 
         self.I_term = np.array([0.0, 0.0])
         self.initialized = False  # 첫 run에서 초기화
 
@@ -77,7 +83,7 @@ class PID_controller(object):
             self.last_error = self.desired_roll_pitch - self.meas_filt
             self.initialized = True
 
-        # ★ 언랩: 측정을 직전 필터값 주변의 연속각으로 맞춤
+        # 언랩: 측정을 직전 필터값 주변의 연속각으로 맞춤
         meas = self._nearest_angle(meas, self.meas_filt)
 
         # 측정값 LPF
@@ -89,7 +95,7 @@ class PID_controller(object):
             if abs(error[i]) < self.deadband:
                 error[i] = 0.0
 
-        # 적분항 (클램프)
+        # 적분항 (클램프(조건부 적분: 출력이 바깥으로 포화되고 있고, 그 방향으로 적분이 더 커지려는 경우 적분 정지))
         self.I_term += error * dt
         self.I_term = np.clip(self.I_term, -self.i_limit, self.i_limit)
 
