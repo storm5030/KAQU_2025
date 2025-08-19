@@ -14,7 +14,7 @@ class QuadrupedControllerNode(Node):
         super().__init__('quadruped_controller_node')
 
         # 로봇 파라미터
-        body = [210.0, 140.5] # 길이와 너비
+        body = [155.0, 140.5] # 길이와 너비
         legs = [0.0, 42.4, 101.0, 108.9] # 다리 링크 길이가 아니라 계산에 필요한 길이임
         default_height = 160
         x_shift_front = 0 #42
