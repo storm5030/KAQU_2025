@@ -15,7 +15,7 @@ def generate_launch_description():
 
     # (2) 경사로/계단 SDF 경로
     ramp_sdf   = os.path.join(pkg_path, 'models', 'ramp', 'model.sdf')
-    stairs_sdf = os.path.join(pkg_path, 'models', 'stairs', 'model.sdf')
+    stairs_sdf = os.path.join(pkg_path, 'models', 'stairs_copy', 'model.sdf') #stairs: 폭 0.1 stairs_copy; 폭 0.2
 
     # (3) robot_state_publisher
     robot_state_publisher_node = Node(

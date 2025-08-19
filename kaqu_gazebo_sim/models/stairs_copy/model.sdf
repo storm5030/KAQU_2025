@@ -1,0 +1,149 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+  <model name="stairs">
+    <static>true</static>
+
+    <link name="step_0">
+      <pose>0 0.0 0.025 0 0 0</pose>
+      <collision name="collision">
+        <geometry>
+          <box><size>1.0 0.2 0.05</size></box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>0.8</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <box><size>1.0 0.2 0.05</size></box>
+        </geometry>
+        <material>
+          <ambient>0.7 0.7 0.7 1</ambient>
+          <diffuse>0.8 0.8 0.8 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <link name="step_1">
+      <pose>0 0.2 0.075 0 0 0</pose>
+      <collision name="collision">
+        <geometry>
+          <box><size>1.0 0.2 0.05</size></box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode><mu>1.0</mu><mu2>0.8</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <box><size>1.0 0.2 0.05</size></box>
+        </geometry>
+        <material>
+          <ambient>0.7 0.7 0.7 1</ambient>
+          <diffuse>0.8 0.8 0.8 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <link name="step_2">
+      <pose>0 0.4 0.125 0 0 0</pose>
+      <collision name="collision">
+        <geometry>
+          <box><size>1.0 0.2 0.05</size></box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode><mu>1.0</mu><mu2>0.8</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <box><size>1.0 0.2 0.05</size></box>
+        </geometry>
+        <material>
+          <ambient>0.7 0.7 0.7 1</ambient>
+          <diffuse>0.8 0.8 0.8 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <link name="step_3">
+      <pose>0 0.6 0.175 0 0 0</pose>
+      <collision name="collision">
+        <geometry>
+          <box><size>1.0 0.2 0.05</size></box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode><mu>1.0</mu><mu2>0.8</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <box><size>1.0 0.2 0.05</size></box>
+        </geometry>
+        <material>
+          <ambient>0.7 0.7 0.7 1</ambient>
+          <diffuse>0.8 0.8 0.8 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <link name="step_4">
+      <pose>0 0.8 0.225 0 0 0</pose>
+      <collision name="collision">
+        <geometry>
+          <box><size>1.0 0.2 0.05</size></box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode><mu>1.0</mu><mu2>0.8</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <box><size>1.0 0.2 0.05</size></box>
+        </geometry>
+        <material>
+          <ambient>0.7 0.7 0.7 1</ambient>
+          <diffuse>0.8 0.8 0.8 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <link name="step_5">
+      <pose>0 1.0 0.275 0 0 0</pose>
+      <collision name="collision">
+        <geometry>
+          <box><size>1.0 0.2 0.05</size></box>
+        </geometry>
+        <surface>
+          <friction>
+            <ode><mu>1.0</mu><mu2>0.8</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <box><size>1.0 0.2 0.05</size></box>
+        </geometry>
+        <material>
+          <ambient>0.7 0.7 0.7 1</ambient>
+          <diffuse>0.8 0.8 0.8 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+
+  </model>
+</sdf>
