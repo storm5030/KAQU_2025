@@ -41,26 +41,27 @@ class StairTrotGaitController(TrotGaitController):
         self.max_y_vel = leg.stair.max_y_vel
         self.max_yaw_rate = leg.stair.max_yaw_rate
 
+                # --- 계단 규격 반영 (stair사용) ---
+        self.stair_tread = 0.10   # 계단 폭(앞으로 가야하는 길이)
+        self.stair_rise  = 0.05   # 계단 높이
+        # 안전 여유
+        self.step_margin = 0.02   # 스텝 길이 여유
+        self.lift_margin = 0.03   # 스윙 높이 여유
+
+        # 최소 보장값
+        self.min_step_length = self.stair_tread + self.step_margin   # 0.12 m
+        self.min_swing_lift  = self.stair_rise  + self.lift_margin   # 0.08 m
+
         # z 에러 게인 (기존 설계 유지)
         z_error_constant = 0.5 * 4
 
         # 컨트롤러 구성
-        self.swingController = StairSwingController(
-            self.stance_ticks,
-            self.swing_ticks,
-            self.time_step,
-            self.phase_length,
-            self.z_leg_lift,
-            self.default_stance,
-        )
+        self.swingController = StairSwingController(self.stance_ticks, self.swing_ticks, self.time_step,
+            self.phase_length, self.z_leg_lift, self.default_stance)
 
         self.stanceController = TrotStanceController(
-            self.phase_length,
-            self.stance_ticks,
-            self.swing_ticks,
-            self.time_step,
-            z_error_constant,
-        )
+            self.phase_length, self.stance_ticks,self.swing_ticks,
+            self.time_step, z_error_constant)
 
         # PID 컨트롤러
         self.pid_controller = PID_controller(0.12, 0.30, 0.01, 0.15, 0.05, 0.20, 0.10, 0.5)
@@ -87,20 +88,15 @@ class StairTrotGaitController(TrotGaitController):
         # 스윙 중인데 접촉이 남아있으면 여유고도(미터)
         self.extra_clearance = getattr(leg.stair, "extra_clearance", 0.03)
 
-        # SwingController에도 공유
+        # SwingController에 전달 (최소 보장값 포함!)
         self.swingController.front_leg_indices = self.front_leg_indices
         self.swingController.rear_leg_indices  = self.rear_leg_indices
         self.swingController.front_lift_gain   = self.front_lift_gain
         self.swingController.rear_lift_gain    = self.rear_lift_gain
         self.swingController.extra_clearance   = self.extra_clearance
+        self.swingController.min_step_length   = self.min_step_length
+        self.swingController.min_swing_lift    = self.min_swing_lift
 
-        # (선택) 트롯 contact 패턴을 안전한 대각 교대로 강제하고 싶다면 아래 활성화
-        # self.contact_phases = np.array([
-        #     [1, 0, 1, 0],  # FR
-        #     [0, 1, 0, 1],  # FL
-        #     [1, 0, 1, 0],  # RR
-        #     [0, 1, 0, 1],  # RL
-        # ], dtype=int)
 
     def _soft_clip(self, x, limit):
         if x > limit: return limit
@@ -191,9 +187,14 @@ class StairSwingController(TrotSwingController):
     # 기본값(컨트롤러에서 override)
     front_leg_indices = [0, 1]  # FR, FL
     rear_leg_indices  = [2, 3]  # RR, RL
-    front_lift_gain = 1.20
-    rear_lift_gain  = 1.00
+    front_lift_gain = 1.00
+    rear_lift_gain  = 1.20
     extra_clearance = 0.03  # m
+
+    # 새로 전달받는 보장값(stairs)
+    min_step_length = 0.12  # m
+    min_swing_lift  = 0.08  # m
+
 
     def __init__(self, stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance):
         super().__init__(stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance)
@@ -202,14 +203,32 @@ class StairSwingController(TrotSwingController):
         vx, vy, wz = _get_velocity3(command)
 
         if swing_phase < 0.5:
+            # 초반은 제자리 근처에서 들어올리기
             return self.default_stance[:, leg_index]
         else:
-            delta_pos_2d = 2 * np.array([vx, vy]) * self.phase_length * self.time_step
-            delta_pos = np.array([delta_pos_2d[0], delta_pos_2d[1], 0.0])
+            # 기본: 2 * v * T_half
+            base_delta_2d = 2 * np.array([vx, vy]) * self.phase_length * self.time_step
+
+            # 최소 보폭(0.12m)을 스윙 후반으로 갈수록 강하게 적용
+            # 0.5 -> 0.0, 1.0 -> 1.0 로 선형 램프
+            lam = (swing_phase - 0.5) / 0.5
+            lam = max(0.0, min(1.0, lam))
+
+            # 목표 step_x: base와 최소보폭 사이 보간 (방향은 vx 부호, 거의 0이면 +방향 가정)
+            step_x_min = self.min_step_length
+            sign = np.sign(vx) if abs(vx) > 1e-3 else 1.0
+            step_x_target = (1.0 - lam) * base_delta_2d[0] + lam * (sign * step_x_min)
+
+            delta_pos = np.array([step_x_target, base_delta_2d[1], 0.0])
 
             theta = self.stance_ticks * self.time_step * wz * 2.0
             rotation = rotz(theta)
             return np.matmul(rotation, self.default_stance[:, leg_index]) + delta_pos
+
+        
+    rear_lift_delay = 0.35  # 이 구간 전에는 증폭 X
+    rear_lift_full  = 0.70  # 이 이후부터 full rear_lift_gain
+
 
     def swing_height(self, swing_phase, leg_index=None, in_contact=False):
         # 기본 삼각 프로파일
@@ -218,21 +237,32 @@ class StairSwingController(TrotSwingController):
         else:
             swing_h = self.z_leg_lift * (1.0 - (swing_phase - 0.5) / 0.5)
 
-        # 앞/뒤 다리 별 스윙 높이 게인 적용
+        # 앞/뒤 다리 별 게인 (앞다리는 즉시, 뒷다리는 "지연 + 램프")
         if leg_index is not None:
             if leg_index in self.front_leg_indices:
                 swing_h *= self.front_lift_gain
             elif leg_index in self.rear_leg_indices:
-                swing_h *= self.rear_lift_gain
+                # rear: swing_phase < delay => 1.0, delay~full 사이 선형 램프, 이후 full
+                if swing_phase <= self.rear_lift_delay:
+                    gain = 1.0
+                elif swing_phase >= self.rear_lift_full:
+                    gain = self.rear_lift_gain
+                else:
+                    # 선형 램프
+                    t = ((swing_phase - self.rear_lift_delay) /
+                         max(self.rear_lift_full - self.rear_lift_delay, 1e-6))
+                    gain = 1.0 + t * (self.rear_lift_gain - 1.0)
+                swing_h *= gain
 
         # 스윙 중인데 접촉이 남아있으면 여유고도 추가
         if in_contact:
             swing_h += self.extra_clearance
 
+        # --- 최소 스윙 높이 강제 (계단 높이+여유) ---
+        swing_h = max(swing_h, self.min_swing_lift)
         return swing_h
 
     def next_foot_location(self, swing_prop, leg_index, state, command):
-        # 진행률 한 틱만큼 전진(0~0.9 -> 0.1~1.0)
         swing_prop += (1.0 / self.swing_ticks)
 
         foot_location = state.foot_location[:, leg_index]
@@ -248,16 +278,12 @@ class StairSwingController(TrotSwingController):
 
         time_left = self.time_step * self.swing_ticks * (1.0 - swing_prop)
 
-        # 마지막 틱: 착지 위치로 정렬
         if swing_prop >= 1.0:
             new_position = touchdown_location * np.array([1.0, 1.0, 0.0]) + np.array([0.0, 0.0, command.robot_height])
-            return new_position  # [x, y, z]
+            return new_position
 
-        # XY는 터치다운으로 선형 보간
         velocity_xy = (touchdown_location - foot_location) / float(max(time_left, 1e-6)) * np.array([1.0, 1.0, 0.0])
         delta_xy = velocity_xy * self.time_step
-
-        # Z는 swing_height + 로봇 목표 높이
         z_vec = np.array([0.0, 0.0, swing_h + command.robot_height])
 
         return foot_location * np.array([1.0, 1.0, 0.0]) + z_vec + delta_xy
