@@ -73,7 +73,7 @@ class RobotManager(Node):
         self.gait_changer()
         result = self.run()
         self.publish_angle(result)
-        #self.get_logger().info(f"Controller result: \n{result}")
+        self.get_logger().info(f"Controller result: \n{result}")
 
     def default_stance(self):
         """기본 자세를 정의합니다 (4개의 발 위치)."""

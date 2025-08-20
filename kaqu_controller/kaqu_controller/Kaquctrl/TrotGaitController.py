@@ -82,6 +82,7 @@ class TrotGaitController(GaitController):
 
         if self.trotNeeded:  # 움직이고 있으면
             contact_modes = self.contacts(state.ticks)  # 접지 배열 가져오기
+            print(f"[Tick {state.ticks}] Contact Phase: {contact_modes}")
             new_foot_locations = np.zeros((3, 4))
 
             for leg_index in range(4):
