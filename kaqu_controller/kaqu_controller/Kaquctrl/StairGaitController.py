@@ -68,7 +68,7 @@ class StairTrotGaitController(TrotGaitController):
         self.pid_controller.reset()
 
         # === stairmode에서 IMU 추종 완화 ===
-        self.imu_follow_gain = 0.05
+        self.imu_follow_gain = 0.12
         self.imu_max_corr = 0.15
         self.imu_lpf_alpha = 0.2
         self._lp_roll_cmd = 0.0
@@ -98,9 +98,9 @@ class StairTrotGaitController(TrotGaitController):
         self.swingController.min_swing_lift    = self.min_swing_lift
  
         # --- FF(선행) 피치 보정 파라미터 ---
-        self.ff_pitch_deg = 10.0      # 최대 앞숙임 각도(도). 6~12도 사이에서 튜닝
-        self.ff_ramp_start = 0.20    # 스윙 진행률 20%부터 보정 시작
-        self.ff_ramp_end   = 0.90    # 스윙 진행률 80%에 최대치 도달
+        self.ff_pitch_deg = 12.0      # 최대 앞숙임 각도(도). 6~12도 사이에서 튜닝
+        self.ff_ramp_start = 0.15    # 스윙 진행률 20%부터 보정 시작
+        self.ff_ramp_end   = 0.95    # 스윙 진행률 80%에 최대치 도달
         self.ff_height_drop = 0.015   # rear 스윙 중 전체 COM 약간 낮추기(미터, 0~1cm 권장)
 
 
