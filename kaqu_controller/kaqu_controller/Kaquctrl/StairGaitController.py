@@ -83,7 +83,7 @@ class StairTrotGaitController(TrotGaitController):
         # 앞다리 스윙 높이 게인(요청사항: 앞다리 gain으로 조정)
         self.front_lift_gain = getattr(leg.stair, "front_lift_gain", 1.20)  # 필요에 따라 0.8~1.6 조정
         # 뒷다리 기본 1.0 (필요 시 따로 키울 수 있음)
-        self.rear_lift_gain  = getattr(leg.stair, "rear_lift_gain", 1.40)
+        self.rear_lift_gain  = getattr(leg.stair, "rear_lift_gain", 1.50)
 
         # 스윙 중인데 접촉이 남아있으면 여유고도(미터)
         self.extra_clearance = getattr(leg.stair, "extra_clearance", 0.03)
