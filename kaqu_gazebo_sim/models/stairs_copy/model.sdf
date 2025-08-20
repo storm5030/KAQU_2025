@@ -4,10 +4,10 @@
     <static>true</static>
 
     <link name="step_0">
-      <pose>0 0.0 0.025 0 0 0</pose>
+      <pose>0 0.0 0.015 0 0 0</pose>
       <collision name="collision">
         <geometry>
-          <box><size>1.0 0.2 0.05</size></box>
+          <box><size>1.0 0.2 0.03</size></box>
         </geometry>
         <surface>
           <friction>
@@ -20,7 +20,7 @@
       </collision>
       <visual name="visual">
         <geometry>
-          <box><size>1.0 0.2 0.05</size></box>
+          <box><size>1.0 0.2 0.03</size></box>
         </geometry>
         <material>
           <ambient>0.7 0.7 0.7 1</ambient>
@@ -30,10 +30,10 @@
     </link>
 
     <link name="step_1">
-      <pose>0 0.2 0.075 0 0 0</pose>
+      <pose>0 0.2 0.045 0 0 0</pose>
       <collision name="collision">
         <geometry>
-          <box><size>1.0 0.2 0.05</size></box>
+          <box><size>1.0 0.2 0.03</size></box>
         </geometry>
         <surface>
           <friction>
@@ -43,7 +43,7 @@
       </collision>
       <visual name="visual">
         <geometry>
-          <box><size>1.0 0.2 0.05</size></box>
+          <box><size>1.0 0.2 0.03</size></box>
         </geometry>
         <material>
           <ambient>0.7 0.7 0.7 1</ambient>
@@ -53,10 +53,10 @@
     </link>
 
     <link name="step_2">
-      <pose>0 0.4 0.125 0 0 0</pose>
+      <pose>0 0.4 0.075 0 0 0</pose>
       <collision name="collision">
         <geometry>
-          <box><size>1.0 0.2 0.05</size></box>
+          <box><size>1.0 0.2 0.03</size></box>
         </geometry>
         <surface>
           <friction>
@@ -66,7 +66,7 @@
       </collision>
       <visual name="visual">
         <geometry>
-          <box><size>1.0 0.2 0.05</size></box>
+          <box><size>1.0 0.2 0.03</size></box>
         </geometry>
         <material>
           <ambient>0.7 0.7 0.7 1</ambient>
@@ -76,10 +76,10 @@
     </link>
 
     <link name="step_3">
-      <pose>0 0.6 0.175 0 0 0</pose>
+      <pose>0 0.6 0.105 0 0 0</pose>
       <collision name="collision">
         <geometry>
-          <box><size>1.0 0.2 0.05</size></box>
+          <box><size>1.0 0.2 0.03</size></box>
         </geometry>
         <surface>
           <friction>
@@ -89,7 +89,7 @@
       </collision>
       <visual name="visual">
         <geometry>
-          <box><size>1.0 0.2 0.05</size></box>
+          <box><size>1.0 0.2 0.03</size></box>
         </geometry>
         <material>
           <ambient>0.7 0.7 0.7 1</ambient>
@@ -99,10 +99,10 @@
     </link>
 
     <link name="step_4">
-      <pose>0 0.8 0.225 0 0 0</pose>
+      <pose>0 0.8 0.135 0 0 0</pose>
       <collision name="collision">
         <geometry>
-          <box><size>1.0 0.2 0.05</size></box>
+          <box><size>1.0 0.2 0.03</size></box>
         </geometry>
         <surface>
           <friction>
@@ -112,7 +112,7 @@
       </collision>
       <visual name="visual">
         <geometry>
-          <box><size>1.0 0.2 0.05</size></box>
+          <box><size>1.0 0.2 0.03</size></box>
         </geometry>
         <material>
           <ambient>0.7 0.7 0.7 1</ambient>
@@ -122,10 +122,10 @@
     </link>
 
     <link name="step_5">
-      <pose>0 1.0 0.275 0 0 0</pose>
+      <pose>0 1.0 0.165 0 0 0</pose>
       <collision name="collision">
         <geometry>
-          <box><size>1.0 0.2 0.05</size></box>
+          <box><size>1.0 0.2 0.03</size></box>
         </geometry>
         <surface>
           <friction>
@@ -135,7 +135,7 @@
       </collision>
       <visual name="visual">
         <geometry>
-          <box><size>1.0 0.2 0.05</size></box>
+          <box><size>1.0 0.2 0.03</size></box>
         </geometry>
         <material>
           <ambient>0.7 0.7 0.7 1</ambient>

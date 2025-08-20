@@ -42,8 +42,8 @@ class StairTrotGaitController(TrotGaitController):
         self.max_yaw_rate = leg.stair.max_yaw_rate
 
                 # --- 계단 규격 반영 (stair사용) ---
-        self.stair_tread = 0.10   # 계단 폭(앞으로 가야하는 길이)
-        self.stair_rise  = 0.05   # 계단 높이
+        self.stair_tread = 0.20   # 계단 폭(앞으로 가야하는 길이)
+        self.stair_rise  = 0.03   # 계단 높이
         # 안전 여유
         self.step_margin = 0.02   # 스텝 길이 여유
         self.lift_margin = 0.03   # 스윙 높이 여유
@@ -96,6 +96,13 @@ class StairTrotGaitController(TrotGaitController):
         self.swingController.extra_clearance   = self.extra_clearance
         self.swingController.min_step_length   = self.min_step_length
         self.swingController.min_swing_lift    = self.min_swing_lift
+ 
+        # --- FF(선행) 피치 보정 파라미터 ---
+        self.ff_pitch_deg = 10.0      # 최대 앞숙임 각도(도). 6~12도 사이에서 튜닝
+        self.ff_ramp_start = 0.20    # 스윙 진행률 20%부터 보정 시작
+        self.ff_ramp_end   = 0.90    # 스윙 진행률 80%에 최대치 도달
+        self.ff_height_drop = 0.015   # rear 스윙 중 전체 COM 약간 낮추기(미터, 0~1cm 권장)
+
 
 
     def _soft_clip(self, x, limit):
@@ -117,7 +124,6 @@ class StairTrotGaitController(TrotGaitController):
         # 기본 게이트 업데이트
         state.foot_location = self.step(state, command)
         state.robot_height = command.robot_height
-
         new_foot_locations = state.foot_location.copy()
 
         # === (A) IMU 보정(완화/부드럽게) ===
@@ -174,6 +180,38 @@ class StairTrotGaitController(TrotGaitController):
 
                     new_foot_locations[0, leg_index] += dx
                     new_foot_locations[1, leg_index] += dy
+
+        # === (B) rear 스윙시에만 FF(선행) 피치로 전방 숙이기 + COM 살짝 낮추기 ===
+        # 현재 phase 접지 패턴: [FR, FL, RR, RL] = [0,1,2,3]
+        contact_modes = self.contacts(state.ticks)
+        rear_swinging = (contact_modes[2] == 0) or (contact_modes[3] == 0)
+
+        if rear_swinging:
+            # 현재 phase 안에서 스윙 진행률(0~1)
+            swing_prop = float(self.subphase_ticks(state.ticks)) / float(max(self.swing_ticks, 1))
+
+            # 램프 계수: ff_ramp_start~ff_ramp_end 구간에서 0 -> 1
+            s0, s1 = self.ff_ramp_start, self.ff_ramp_end
+            if swing_prop <= s0:
+                r = 0.0
+            elif swing_prop >= s1:
+                r = 1.0
+            else:
+                r = (swing_prop - s0) / max((s1 - s0), 1e-6)
+
+            # 목표 피치(라디안): "앞으로 숙이기" => 음수 아니면 P_ff를 +로 변경
+            p_ff = -np.deg2rad(self.ff_pitch_deg) * r
+            t_pitch = np.tan(p_ff)
+
+            # z 보정: z += x * tan(pitch)
+            # (x>0가 앞다리, x<0가 뒷다리라는 좌표계를 가정)
+            for i in range(4):
+                x = new_foot_locations[0, i]
+                new_foot_locations[2, i] += x * t_pitch
+
+            # COM 살짝 낮추기(과하면 충돌/미끄럼 가능, 0~1cm 권장)
+            dz_drop = self.ff_height_drop * r
+            new_foot_locations[2, :] -= dz_drop
 
         return new_foot_locations
 
