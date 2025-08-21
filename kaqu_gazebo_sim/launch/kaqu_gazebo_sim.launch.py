@@ -103,35 +103,12 @@ def generate_launch_description():
     )
 
     # (9) 브리지
-
-    gz_fl = '/world/default/model/kaqu/link/fl_leg4_1/sensor/fl_foot_contact/contact'
-    gz_fr = '/world/default/model/kaqu/link/fr_leg4_1/sensor/fr_foot_contact/contact'
-    gz_rl = '/world/default/model/kaqu/link/rl_leg4_1/sensor/rl_foot_contact/contact'
-    gz_rr = '/world/default/model/kaqu/link/rr_leg4_1/sensor/rr_foot_contact/contact'
-
-    bridge_args = [
-        '/imu@sensor_msgs/msg/Imu@gz.msgs.IMU',
-        f'{gz_fl}@ros_gz_interfaces/msg/Contacts@gz.msgs.Contacts',
-        f'{gz_fr}@ros_gz_interfaces/msg/Contacts@gz.msgs.Contacts',
-        f'{gz_rl}@ros_gz_interfaces/msg/Contacts@gz.msgs.Contacts',
-        f'{gz_rr}@ros_gz_interfaces/msg/Contacts@gz.msgs.Contacts',
-    ]
-
     imu_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
-        arguments=bridge_args,
-        remappings=[
-            (gz_fl, '/feet/fl/contact'),
-            (gz_fr, '/feet/fr/contact'),
-            (gz_rl, '/feet/rl/contact'),
-            (gz_rr, '/feet/rr/contact'),
-            ('/imu', '/robot/imu')  # IMU도 리매핑 원하면 추가
-        ],
+        arguments=['/imu@sensor_msgs/msg/Imu@gz.msgs.IMU'],
         output='screen'
     )
-
-
 
     return LaunchDescription([
         robot_state_publisher_node,

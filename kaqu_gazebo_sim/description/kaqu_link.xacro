@@ -293,7 +293,7 @@
         ixx="1.843e-7" ixy="1.843e-7" ixz="1.843e-7" iyy="0.0" iyz="0.0" izz="0.0"/>
     </inertial>
     
-    <collision>
+    <collision name="fl_foot_collision">
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <sphere radius="0.01"/> 
@@ -309,7 +309,7 @@
         ixx="1.843e-7" ixy="1.843e-7" ixz="1.843e-7" iyy="0.0" iyz="0.0" izz="0.0"/>
     </inertial>
     
-    <collision>
+    <collision name="rl_foot_collision">
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <sphere radius="0.01"/> 
@@ -325,7 +325,7 @@
         ixx="1.843e-7" ixy="1.843e-7" ixz="1.843e-7" iyy="0.0" iyz="0.0" izz="0.0"/>
     </inertial>
     
-    <collision>
+    <collision name="fr_foot_collision">
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <sphere radius="0.01"/> 
@@ -341,7 +341,7 @@
         ixx="1.843e-7" ixy="1.843e-7" ixz="1.843e-7" iyy="0.0" iyz="0.0" izz="0.0"/>
     </inertial>
     
-    <collision>
+    <collision name="rr_foot_collision">
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <sphere radius="0.01"/> 
