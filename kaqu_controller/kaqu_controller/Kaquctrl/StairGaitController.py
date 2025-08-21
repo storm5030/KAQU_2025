@@ -101,7 +101,7 @@ class StairTrotGaitController(TrotGaitController):
         self.ff_pitch_deg = 11.0      # 최대 앞숙임 각도(도). 6~12도 사이에서 튜닝
         self.ff_ramp_start = 0.15    # 스윙 진행률 20%부터 보정 시작
         self.ff_ramp_end   = 0.95    # 스윙 진행률 80%에 최대치 도달
-        self.ff_height_drop = 0.015   # rear 스윙 중 전체 COM 약간 낮추기(미터, 0~1cm 권장)
+        self.ff_height_drop = 0.010   # rear 스윙 중 전체 COM 약간 낮추기(미터, 0~1cm 권장)
 
         # >>> "두 번째 뒷발"일 때 약간 더 강하게 적용할 스케일
         self.ff_pitch_boost_when_single_rear = 1.10  # 10% 강화
@@ -224,7 +224,14 @@ class StairTrotGaitController(TrotGaitController):
 
             # COM 살짝 낮추기
             new_foot_locations[2, :] -= dz_drop
-
+            # ---z 하한 소프트 클립으로 포화 패턴 완화 ---
+            z_soft = command.robot_height - 0.20  # 예: 바디 기준 -20cm
+            margin = 0.005                        # 5mm 완충
+            z = new_foot_locations[2, :]
+            mask = z < (z_soft + margin)
+            # 하한 근처는 선형 보정으로 살짝 완만하게
+            if np.any(mask):
+                new_foot_locations[2, mask] = z_soft + margin - 0.5 * ((z_soft + margin) - z[mask])
         return new_foot_locations
 
 
@@ -278,7 +285,7 @@ class StairSwingController(TrotSwingController):
         # >>> 못 올라오는 '특정 뒷발'만 z를 더 주는 적응형 부스트 상태/파라미터
         self._rear_extra_z = np.zeros(4, dtype=float)   # 다리별 추가 z (m)
         self._rear_contact_stuck = np.zeros(4, dtype=int)  # 스윙 중 접촉 카운트
-        self.rear_extra_z_gain = 0.030   # 한 번 감지될 때 추가되는 z (m) 10 mm
+        self.rear_extra_z_gain = 0.025   # 한 번 감지될 때 추가되는 z (m) 10 mm
         self.rear_extra_z_max  = 0.040   # 추가 z 상한 (m) 30 mm
         self.rear_extra_z_decay = 0.85   # 매 틱 감쇠(0.8~0.95 권장)
         self.rear_contact_stuck_thresh = 2  # 스윙 중 접촉이 n회 누적되면 z 추가
@@ -292,7 +299,7 @@ class StairSwingController(TrotSwingController):
         self.front_contact_stuck_thresh = 2  # 누적 임계
 
         # >>>  앞발 z-정점에서 x 전진 부스트 파라미터
-        self.front_apex_x_boost_gain  = 0.06   # m, 정점 근처에서 추가 전진량(0.03~0.08 권장)
+        self.front_apex_x_boost_gain  = 0.05   # m, 정점 근처에서 추가 전진량(0.03~0.08 권장)
         self.front_apex_x_boost_sigma = 0.15   # 가우시안 폭(스윙 비율) 0.08~0.15 권장
 
     def _update_second_rear_boost_flag(self, state):
@@ -520,6 +527,17 @@ class StairSwingController(TrotSwingController):
             brake_f = self._clamp01((swing_prop - self.front_brake_start) / (1.0 - self.front_brake_start))
             delta_xy *= (1.0 - self.front_brake_ratio * brake_f)
 
+            # >>> z-정점(≈0.5)에서만 X 전진 푸시 강화 (앞발)
+            mid_front = np.exp(-((swing_prop - 0.5)**2) / (2 * 0.10**2))  # 폭 0.10
+            delta_xy[0] *= (1.0 + 0.35 * mid_front)
+
+            # 디버그: z-정점 근처에서 실제 푸시가 들어가는지 로그
+            if 0.45 < swing_prop < 0.55:
+                print(f"[Tick {int(getattr(state,'ticks',-1))}] front z-peak push: "
+                    f"leg={leg_index}, mid≈{mid_front:.2f}, dX≈{float(delta_xy[0]):.3f}, "
+                    f"extraZ={float(self._front_extra_z[leg_index]):.3f}")
+
+
             # >>> (front adaptive z): 스윙 중 접촉 기반의 '특정 앞발' z 부스트 갱신
             if (0.25 < swing_prop < 0.85):
                 if in_contact:
@@ -537,12 +555,20 @@ class StairSwingController(TrotSwingController):
             # 매 틱 감쇠(과도한 상승 방지)
             self._front_extra_z[leg_index] *= self.front_extra_z_decay
 
+            # 디버그: 앞발 스윙 중 접촉 누적 상태 확인
+            if (0.25 < swing_prop < 0.85) and in_contact:
+                print(f"[Tick {int(getattr(state,'ticks',-1))}] front stuck contact: "
+                    f"leg={leg_index}, cnt={int(self._front_contact_stuck[leg_index])}, "
+                    f"extraZ={float(self._front_extra_z[leg_index]):.3f}")
+
+
             # >>> 못 뜬 '특정 앞발'이면 z-정점(≈0.5) 부근에서 x를 더 밀어주기
             #     - 조건: 이 앞발에 대해 _front_extra_z가 누적되어 있거나(이전 스윙에서 걸렸던 발),
             #             스윙 중 접촉 카운트가 남아 있을 때
             apex_w = np.exp(-((swing_prop - 0.5)**2) / (2 * (self.front_apex_x_boost_sigma ** 2)))
             if (self._front_extra_z[leg_index] > 0.0) or (self._front_contact_stuck[leg_index] > 0):
                 delta_xy[0] += self.front_apex_x_boost_gain * apex_w  # 정점 부근에서만 전진량 추가
+
 
         # >>> '두 번째 뒷발'일 때 X 델타 부스트
         if leg_index in self.rear_leg_indices:
@@ -563,5 +589,16 @@ class StairSwingController(TrotSwingController):
 
 
         z_vec = np.array([0.0, 0.0, swing_h + command.robot_height])
+
+                # >>> LOG: limit margin
+        try:
+            # 예: 허용 z 최소값 (시스템에 맞게 변경)
+            z_min_soft = command.robot_height - 0.20  # 바디 기준 -20cm 같은 의미라면
+            z_leg = foot_location[2] + (swing_h)  # 실제 발 z 근사
+            if z_leg < z_min_soft + 0.01:  # 1cm 이내 접근이면 경고
+                print(f"[Tick {int(getattr(state,'ticks',-1))}] z-soft-limit near: leg={leg_index}, z≈{z_leg:.3f}")
+        except Exception:
+            pass
+
 
         return foot_location * np.array([1.0, 1.0, 0.0]) + z_vec + delta_xy
