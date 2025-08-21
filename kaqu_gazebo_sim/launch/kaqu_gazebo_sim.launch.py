@@ -103,12 +103,29 @@ def generate_launch_description():
     )
 
     # (9) 브리지
-    imu_bridge = Node(
+    imu_and_contacts_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
-        arguments=['/imu@sensor_msgs/msg/Imu@gz.msgs.IMU'],
-        output='screen'
+        output='screen',
+        arguments=[
+            # IMU 브리지
+            '/imu@sensor_msgs/msg/Imu@gz.msgs.IMU',
+
+            # Contact 센서 브리지 (GZ → ROS)
+            '/world/default/model/kaqu/link/fl_leg4_1/sensor/fl_foot_contact/contact@ros_gz_interfaces/msg/Contacts@gz.msgs.Contacts',
+            '/world/default/model/kaqu/link/fr_leg4_1/sensor/fr_foot_contact/contact@ros_gz_interfaces/msg/Contacts@gz.msgs.Contacts',
+            '/world/default/model/kaqu/link/rl_leg4_1/sensor/rl_foot_contact/contact@ros_gz_interfaces/msg/Contacts@gz.msgs.Contacts',
+            '/world/default/model/kaqu/link/rr_leg4_1/sensor/rr_foot_contact/contact@ros_gz_interfaces/msg/Contacts@gz.msgs.Contacts',
+
+            # ROS 리맵 규칙 추가
+            '--ros-args',
+            '-r', '/world/default/model/kaqu/link/fl_leg4_1/sensor/fl_foot_contact/contact:=/contact/fl',
+            '-r', '/world/default/model/kaqu/link/fr_leg4_1/sensor/fr_foot_contact/contact:=/contact/fr',
+            '-r', '/world/default/model/kaqu/link/rl_leg4_1/sensor/rl_foot_contact/contact:=/contact/rl',
+            '-r', '/world/default/model/kaqu/link/rr_leg4_1/sensor/rr_foot_contact/contact:=/contact/rr',
+        ],
     )
+
 
     return LaunchDescription([
         robot_state_publisher_node,
@@ -118,5 +135,5 @@ def generate_launch_description():
         spawn_ramp,
         spawn_stairs,
         spawn_controllers,
-        imu_bridge
+        imu_and_contacts_bridge
     ])
