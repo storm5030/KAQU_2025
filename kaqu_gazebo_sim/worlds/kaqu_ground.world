@@ -19,7 +19,9 @@
             name="gz::sim::systems::SceneBroadcaster"/>
     <plugin filename="libignition-gazebo-imu-system.so"
             name="ignition::gazebo::systems::Imu"/>
-
+    <plugin filename="libignition-gazebo-contact-system.so"
+        name="ignition::gazebo::systems::Contact">
+    </plugin>
     <!-- 조명 -->
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>
