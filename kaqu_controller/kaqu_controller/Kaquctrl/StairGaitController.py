@@ -98,7 +98,7 @@ class StairTrotGaitController(TrotGaitController):
         self.swingController.min_swing_lift    = self.min_swing_lift
  
         # --- FF(선행) 피치 보정 파라미터 ---
-        self.ff_pitch_deg = 12.0      # 최대 앞숙임 각도(도). 6~12도 사이에서 튜닝
+        self.ff_pitch_deg = 11.0      # 최대 앞숙임 각도(도). 6~12도 사이에서 튜닝
         self.ff_ramp_start = 0.15    # 스윙 진행률 20%부터 보정 시작
         self.ff_ramp_end   = 0.95    # 스윙 진행률 80%에 최대치 도달
         self.ff_height_drop = 0.015   # rear 스윙 중 전체 COM 약간 낮추기(미터, 0~1cm 권장)
@@ -237,7 +237,7 @@ class StairSwingController(TrotSwingController):
     # 기본값(컨트롤러에서 override)
     front_leg_indices = [0, 1]  # FR, FL
     rear_leg_indices  = [2, 3]  # RR, RL
-    front_lift_gain = 1.10
+    front_lift_gain = 1.15
     rear_lift_gain  = 1.20
     extra_clearance = 0.03  # m
 
@@ -275,6 +275,26 @@ class StairSwingController(TrotSwingController):
         self.second_rear_boost_gain = 1.40        # X 델타 배수 (1.1~1.4 튜닝)
         self.second_rear_boost_window = int(0.35 * self.swing_ticks)  # 착지 후 ~35% 스윙창
         
+        # >>> 못 올라오는 '특정 뒷발'만 z를 더 주는 적응형 부스트 상태/파라미터
+        self._rear_extra_z = np.zeros(4, dtype=float)   # 다리별 추가 z (m)
+        self._rear_contact_stuck = np.zeros(4, dtype=int)  # 스윙 중 접촉 카운트
+        self.rear_extra_z_gain = 0.030   # 한 번 감지될 때 추가되는 z (m) 10 mm
+        self.rear_extra_z_max  = 0.040   # 추가 z 상한 (m) 30 mm
+        self.rear_extra_z_decay = 0.85   # 매 틱 감쇠(0.8~0.95 권장)
+        self.rear_contact_stuck_thresh = 2  # 스윙 중 접촉이 n회 누적되면 z 추가
+
+        # >>> (front adaptive z): 못 올라오는 '특정 앞발'만 z를 더 주는 상태/파라미터
+        self._front_extra_z = np.zeros(4, dtype=float)       # 다리별 추가 z (m) - 앞다리 인덱스만 사용
+        self._front_contact_stuck = np.zeros(4, dtype=int)   # 스윙 중 접촉 카운트
+        self.front_extra_z_gain = 0.020   # 감지 1회당 추가 z (m) ~8 mm
+        self.front_extra_z_max  = 0.035   # 상한 (m) ~25 mm
+        self.front_extra_z_decay = 0.85   # 감쇠
+        self.front_contact_stuck_thresh = 2  # 누적 임계
+
+        # >>>  앞발 z-정점에서 x 전진 부스트 파라미터
+        self.front_apex_x_boost_gain  = 0.06   # m, 정점 근처에서 추가 전진량(0.03~0.08 권장)
+        self.front_apex_x_boost_sigma = 0.15   # 가우시안 폭(스윙 비율) 0.08~0.15 권장
+
     def _update_second_rear_boost_flag(self, state):
         try:
             cur_tick = int(getattr(state, "ticks"))
@@ -379,6 +399,15 @@ class StairSwingController(TrotSwingController):
             if 0.45 < s < 0.60:
                 w = 1.0 - abs((s - 0.525) / 0.075)  # 0→1→0
                 swing_h += 0.005 * w
+
+        # >>> 못 올라오는 '특정 뒷발'에만 가산되는 적응형 z 부스트
+        if leg_index in self.rear_leg_indices:
+            swing_h += self._rear_extra_z[leg_index]
+
+        # >>> (front adaptive z): 못 올라오는 '특정 앞발'만 추가 z 반영
+        if leg_index in self.front_leg_indices:
+            swing_h += self._front_extra_z[leg_index]
+
         # --- 최소 스윙 높이 강제 (계단 높이+여유) ---
         swing_h = max(swing_h, self.min_swing_lift)
         return swing_h
@@ -449,6 +478,23 @@ class StairSwingController(TrotSwingController):
                 # 2) z 여유를 소폭 추가 (코 간섭 완화)
                 swing_h += 0.008  # 6~12 mm 범위에서 조정
 
+            # >>> 스윙 중 접촉 기반의 '특정 뒷발' z 부스트 감지/갱신
+            if (0.25 < swing_prop < 0.85):
+                if in_contact:
+                    self._rear_contact_stuck[leg_index] += 1
+                    if self._rear_contact_stuck[leg_index] >= self.rear_contact_stuck_thresh:
+                        self._rear_extra_z[leg_index] = min(
+                            self.rear_extra_z_max,
+                            self._rear_extra_z[leg_index] + self.rear_extra_z_gain
+                        )
+                        self._rear_contact_stuck[leg_index] = 0
+                else:
+                    if self._rear_contact_stuck[leg_index] > 0:
+                        self._rear_contact_stuck[leg_index] -= 1
+
+            # 매 틱 감쇠(과도한 상승 방지)
+            self._rear_extra_z[leg_index] *= self.rear_extra_z_decay
+
         # >>> 앞다리 전용 back-off(초반 살짝 뒤로 → 중반 복귀) + late 램프/브레이크
         if leg_index in self.front_leg_indices:
             up_f   = self._ramp(self.front_backoff_start, self.front_backoff_peak, swing_prop)
@@ -468,11 +514,35 @@ class StairSwingController(TrotSwingController):
 
             # 앞다리도 후반에 XY 램프 인가(앞계단으로 넘어갈 때 가속)
             lam_f = self._clamp01((swing_prop - self.front_xy_ramp_start) / (1.0 - self.front_xy_ramp_start))
-            delta_xy *= (0.5 + 0.5 * lam_f)  # 0.5배 → 1.0배
+            delta_xy *= (0.3 + 0.7 * lam_f)  # 0.5배 → 1.0배
 
             # 터치다운 직전엔 감속
             brake_f = self._clamp01((swing_prop - self.front_brake_start) / (1.0 - self.front_brake_start))
             delta_xy *= (1.0 - self.front_brake_ratio * brake_f)
+
+            # >>> (front adaptive z): 스윙 중 접촉 기반의 '특정 앞발' z 부스트 갱신
+            if (0.25 < swing_prop < 0.85):
+                if in_contact:
+                    self._front_contact_stuck[leg_index] += 1
+                    if self._front_contact_stuck[leg_index] >= self.front_contact_stuck_thresh:
+                        self._front_extra_z[leg_index] = min(
+                            self.front_extra_z_max,
+                            self._front_extra_z[leg_index] + self.front_extra_z_gain
+                        )
+                        self._front_contact_stuck[leg_index] = 0
+                else:
+                    if self._front_contact_stuck[leg_index] > 0:
+                        self._front_contact_stuck[leg_index] -= 1
+
+            # 매 틱 감쇠(과도한 상승 방지)
+            self._front_extra_z[leg_index] *= self.front_extra_z_decay
+
+            # >>> 못 뜬 '특정 앞발'이면 z-정점(≈0.5) 부근에서 x를 더 밀어주기
+            #     - 조건: 이 앞발에 대해 _front_extra_z가 누적되어 있거나(이전 스윙에서 걸렸던 발),
+            #             스윙 중 접촉 카운트가 남아 있을 때
+            apex_w = np.exp(-((swing_prop - 0.5)**2) / (2 * (self.front_apex_x_boost_sigma ** 2)))
+            if (self._front_extra_z[leg_index] > 0.0) or (self._front_contact_stuck[leg_index] > 0):
+                delta_xy[0] += self.front_apex_x_boost_gain * apex_w  # 정점 부근에서만 전진량 추가
 
         # >>> '두 번째 뒷발'일 때 X 델타 부스트
         if leg_index in self.rear_leg_indices:
