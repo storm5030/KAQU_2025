@@ -91,13 +91,6 @@
             <state_interface name="effort"/>
         </joint>
     </ros2_control>
-
-    <!--  CONFIGURE THE GAZEBO PLUGIN -->
-    <!-- <gazebo>
-        <plugin name="gz_ros2_control" filename="libgz_ros2_control-system.so">
-          <parameters>$(find kaqu_gazebo_sim)/config/kaqu_joint_controller.yaml</parameters>
-        </plugin>
-    </gazebo> -->
     <gazebo>
         <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
             <robot_param>robot_description</robot_param>
