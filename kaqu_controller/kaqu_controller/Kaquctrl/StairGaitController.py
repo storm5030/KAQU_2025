@@ -103,7 +103,7 @@ class StairTrotGaitController(TrotGaitController):
         self.ff_ramp_end   = 0.95    # 스윙 진행률 80%에 최대치 도달
         self.ff_height_drop = 0.015   # rear 스윙 중 전체 COM 약간 낮추기(미터, 0~1cm 권장)
 
-        # >>> ADDED: "두 번째 뒷발"일 때 약간 더 강하게 적용할 스케일
+        # >>> "두 번째 뒷발"일 때 약간 더 강하게 적용할 스케일
         self.ff_pitch_boost_when_single_rear = 1.10  # 10% 강화
         self.ff_drop_boost_when_single_rear  = 1.10  # 10% 강화
 
@@ -246,15 +246,58 @@ class StairSwingController(TrotSwingController):
     min_swing_lift  = 0.08  # m
 
     # === 뒷다리 전진 램프 back-off/forward profile parameters ===
-    rear_backoff_dx    = -0.06  # m (초반에 뒤로 당길 최대치; 음수=뒤쪽)
+    rear_backoff_dx    = -0.07  # m (초반에 뒤로 당길 최대치; 음수=뒤쪽)
     rear_backoff_lift  = 0.020  # m (back-off 동안 추가 z)
     rear_backoff_start = 0.00   # 스윙 진행률 시작
     rear_backoff_peak  = 0.35   # 여기까지 back-off ↑
     rear_backoff_end   = 0.70   # 여기까지 back-off ↓(이후 0)
 
+    # >>> 앞다리도 코 간섭 방지를 위한 back-off/forward 프로파일
+    front_backoff_dx    = -0.04  # m (앞다리도 초반에 살짝 뒤로)
+    front_backoff_lift  = 0.010  # m (back-off 중 z 여유)
+    front_backoff_start = 0.05   # 시작 지연(초반 살짝 들고나서 뒤로)
+    front_backoff_peak  = 0.30   # 여기까지 back-off ↑
+    front_backoff_end   = 0.60   # 여기까지 back-off ↓(이후 0)
+
+    # >>> 앞다리 late-XY 램프/브레이크
+    front_xy_ramp_start = 0.45   # 이 이후 XY 가속
+    front_brake_start   = 0.85   # 터치다운 직전 감속 시작
+    front_brake_ratio   = 0.5    # 최대 40% 감속
 
     def __init__(self, stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance):
         super().__init__(stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance)
+          
+         # >>>두 번째 뒷발 부스트를 위한 상태 변수
+        self._prev_tick = -1
+        self._prev_contact = np.array([1, 1, 1, 1], dtype=int)
+        self._second_rear_boost_leg = None        # 2(RR) 또는 3(RL)
+        self._second_rear_boost_expire = -1       # 부스트 만료 tick
+        self.second_rear_boost_gain = 1.40        # X 델타 배수 (1.1~1.4 튜닝)
+        self.second_rear_boost_window = int(0.35 * self.swing_ticks)  # 착지 후 ~35% 스윙창
+        
+    def _update_second_rear_boost_flag(self, state):
+        try:
+            cur_tick = int(getattr(state, "ticks"))
+        except Exception:
+            return
+
+        if cur_tick == self._prev_tick:
+            return  # 같은 틱이면 스킵
+
+        try:
+            contact = np.array(getattr(state, "contact"), dtype=int)
+        except Exception:
+            contact = self._prev_contact
+
+        rr_td = (self._prev_contact[2] == 0 and contact[2] == 1)
+        rl_td = (self._prev_contact[3] == 0 and contact[3] == 1)
+
+        if rr_td or rl_td:
+            self._second_rear_boost_leg = (3 if rr_td else 2)
+            self._second_rear_boost_expire = cur_tick + self.second_rear_boost_window
+
+        self._prev_contact = contact
+        self._prev_tick = cur_tick
 
     def raibert_touchdown_location(self, leg_index, command, swing_phase):
         vx, vy, wz = _get_velocity3(command)
@@ -307,6 +350,12 @@ class StairSwingController(TrotSwingController):
         if leg_index is not None:
             if leg_index in self.front_leg_indices:
                 swing_h *= self.front_lift_gain
+                # >>> 앞다리 back-off 구간엔 z 여유 조금 추가
+                s = swing_phase
+                up   = self._ramp(self.front_backoff_start, self.front_backoff_peak, s)
+                down = 1.0 - self._ramp(self.front_backoff_peak, self.front_backoff_end, s)
+                bump = min(up, down)
+                swing_h += self.front_backoff_lift * bump
             elif leg_index in self.rear_leg_indices:
                 # rear: swing_phase < delay => 1.0, delay~full 사이 선형 램프, 이후 full
                 if swing_phase <= self.rear_lift_delay:
@@ -336,6 +385,9 @@ class StairSwingController(TrotSwingController):
 
     def next_foot_location(self, swing_prop, leg_index, state, command):
         swing_prop += (1.0 / self.swing_ticks)
+
+        # 매 틱 최초 호출에서 최근 뒷발 착지 이벤트 갱신
+        self._update_second_rear_boost_flag(state)
 
         foot_location = state.foot_location[:, leg_index]
         in_contact = False
@@ -396,8 +448,44 @@ class StairSwingController(TrotSwingController):
 
                 # 2) z 여유를 소폭 추가 (코 간섭 완화)
                 swing_h += 0.008  # 6~12 mm 범위에서 조정
-     
-        
+
+        # >>> 앞다리 전용 back-off(초반 살짝 뒤로 → 중반 복귀) + late 램프/브레이크
+        if leg_index in self.front_leg_indices:
+            up_f   = self._ramp(self.front_backoff_start, self.front_backoff_peak, swing_prop)
+            down_f = 1.0 - self._ramp(self.front_backoff_peak, self.front_backoff_end, swing_prop)
+            bump_f = min(up_f, down_f)
+
+            front_backoff_offset_x = self.front_backoff_dx * bump_f
+
+            next_s = min(1.0, swing_prop + (1.0 / self.swing_ticks))
+            up_fn   = self._ramp(self.front_backoff_start, self.front_backoff_peak, next_s)
+            down_fn = 1.0 - self._ramp(self.front_backoff_peak, self.front_backoff_end, next_s)
+            bump_fn = min(up_fn, down_fn)
+            front_backoff_offset_x_next = self.front_backoff_dx * bump_fn
+
+            front_backoff_dx_step = (front_backoff_offset_x_next - front_backoff_offset_x)
+            delta_xy += np.array([front_backoff_dx_step, 0.0, 0.0])
+
+            # 앞다리도 후반에 XY 램프 인가(앞계단으로 넘어갈 때 가속)
+            lam_f = self._clamp01((swing_prop - self.front_xy_ramp_start) / (1.0 - self.front_xy_ramp_start))
+            delta_xy *= (0.5 + 0.5 * lam_f)  # 0.5배 → 1.0배
+
+            # 터치다운 직전엔 감속
+            brake_f = self._clamp01((swing_prop - self.front_brake_start) / (1.0 - self.front_brake_start))
+            delta_xy *= (1.0 - self.front_brake_ratio * brake_f)
+
+        # >>> '두 번째 뒷발'일 때 X 델타 부스트
+        if leg_index in self.rear_leg_indices:
+            try:
+                cur_tick = int(getattr(state, "ticks"))
+            except Exception:
+                cur_tick = -1
+
+            if (self._second_rear_boost_leg == leg_index) and (cur_tick <= self._second_rear_boost_expire):
+                # z 최대 부근에서 더 강해지도록 가우시안 가중까지 곱해줌(선택)
+                mid = np.exp(-((swing_prop - 0.5)**2) / (2 * 0.12**2))
+                delta_xy[0] *= (self.second_rear_boost_gain * (1.0 + 0.15 * mid))
+
         # 마지막 틱: 정확히 터치다운 z로 세팅
         if swing_prop >= 1.0:
             new_position = touchdown_location * np.array([1.0, 1.0, 0.0]) + np.array([0.0, 0.0, command.robot_height])
