@@ -225,13 +225,20 @@ class StairSwingController(TrotSwingController):
     # 기본값(컨트롤러에서 override)
     front_leg_indices = [0, 1]  # FR, FL
     rear_leg_indices  = [2, 3]  # RR, RL
-    front_lift_gain = 1.00
+    front_lift_gain = 1.10
     rear_lift_gain  = 1.20
     extra_clearance = 0.03  # m
 
     # 새로 전달받는 보장값(stairs)
     min_step_length = 0.12  # m
     min_swing_lift  = 0.08  # m
+
+    # === 뒷다리 전진 램프 back-off/forward profile parameters ===
+    rear_backoff_dx    = -0.04  # m (초반에 뒤로 당길 최대치; 음수=뒤쪽)
+    rear_backoff_lift  = 0.015  # m (back-off 동안 추가 z)
+    rear_backoff_start = 0.00   # 스윙 진행률 시작
+    rear_backoff_peak  = 0.35   # 여기까지 back-off ↑
+    rear_backoff_end   = 0.70   # 여기까지 back-off ↓(이후 0)
 
 
     def __init__(self, stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance):
@@ -248,7 +255,6 @@ class StairSwingController(TrotSwingController):
             base_delta_2d = 2 * np.array([vx, vy]) * self.phase_length * self.time_step
 
             # 최소 보폭(0.12m)을 스윙 후반으로 갈수록 강하게 적용
-            # 0.5 -> 0.0, 1.0 -> 1.0 로 선형 램프
             lam = (swing_phase - 0.5) / 0.5
             lam = max(0.0, min(1.0, lam))
 
@@ -267,7 +273,15 @@ class StairSwingController(TrotSwingController):
     rear_lift_delay = 0.35  # 이 구간 전에는 증폭 X
     rear_lift_full  = 0.70  # 이 이후부터 full rear_lift_gain
 
+    def _clamp01(self, x):
+        return max(0.0, min(1.0, x))
 
+    def _ramp(self, s0, s1, s):
+        """s0~s1에서 0→1 선형 램프"""
+        if s <= s0: return 0.0
+        if s >= s1: return 1.0
+        return (s - s0) / max(s1 - s0, 1e-6)
+    
     def swing_height(self, swing_phase, leg_index=None, in_contact=False):
         # 기본 삼각 프로파일
         if swing_phase < 0.5:
@@ -316,12 +330,40 @@ class StairSwingController(TrotSwingController):
 
         time_left = self.time_step * self.swing_ticks * (1.0 - swing_prop)
 
+        velocity_xy = (touchdown_location - foot_location) / float(max(time_left, 1e-6)) * np.array([1.0, 1.0, 0.0])
+        delta_xy = velocity_xy * self.time_step
+
+        # === rear 전용 back-off(초반 뒤로 → 중반 복귀)의 미분 효과를 속도로 반영 ===
+        if leg_index in self.rear_leg_indices:
+            up   = self._ramp(self.rear_backoff_start, self.rear_backoff_peak, swing_prop)
+            down = 1.0 - self._ramp(self.rear_backoff_peak, self.rear_backoff_end, swing_prop)
+            bump = min(up, down)
+
+            backoff_offset_x = self.rear_backoff_dx * bump
+
+            next_s = min(1.0, swing_prop + (1.0 / self.swing_ticks))
+            up_n   = self._ramp(self.rear_backoff_start, self.rear_backoff_peak, next_s)
+            down_n = 1.0 - self._ramp(self.rear_backoff_peak, self.rear_backoff_end, next_s)
+            bump_n = min(up_n, down_n)
+            backoff_offset_x_next = self.rear_backoff_dx * bump_n
+
+            backoff_dx_step = (backoff_offset_x_next - backoff_offset_x)
+            delta_xy += np.array([backoff_dx_step, 0.0, 0.0])
+
+            # rear late-XY 램프: 0.5~1.0에서 0.3배→1.0배
+            lam_early = self._clamp01(swing_prop / 0.5)
+            delta_xy *= (0.3 + 0.7 * lam_early)
+            # z 최대 부근(≈0.5)에서 x를 한 번 더 밀어주는 가우시안 부스트
+            mid = np.exp(-((swing_prop - 0.5)**2) / (2 * 0.12**2))  # 폭 ~0.12
+            delta_xy[0] *= (1.0 + 0.50 * mid)  # 최대 +35% 부스트
+
+        
+        # 마지막 틱: 정확히 터치다운 z로 세팅
         if swing_prop >= 1.0:
             new_position = touchdown_location * np.array([1.0, 1.0, 0.0]) + np.array([0.0, 0.0, command.robot_height])
             return new_position
 
-        velocity_xy = (touchdown_location - foot_location) / float(max(time_left, 1e-6)) * np.array([1.0, 1.0, 0.0])
-        delta_xy = velocity_xy * self.time_step
+
         z_vec = np.array([0.0, 0.0, swing_h + command.robot_height])
 
         return foot_location * np.array([1.0, 1.0, 0.0]) + z_vec + delta_xy
