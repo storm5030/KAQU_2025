@@ -28,8 +28,8 @@ class StairTrotGaitController(TrotGaitController):
         # # imu compensation IMU 보정
         if self.use_imu: 
             # IMU에서 받은 기울기 (deg)
-            roll = np.deg2rad(state.imu_roll)
-            pitch = np.deg2rad(state.imu_pitch)
+            roll = state.imu_roll
+            pitch = state.imu_pitch
             # PID 컨트롤러를 이용해 roll/pitch 오차 보정
             corrections = [roll, pitch]
             for leg_index in range(4):
