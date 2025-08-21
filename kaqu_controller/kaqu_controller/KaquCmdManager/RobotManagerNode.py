@@ -63,10 +63,10 @@ class RobotManager(Node):
         # 기본 컨트롤러 설정 (Rest 상태)
         self.current_controller = self.rest_controller
         self.state.behavior_state = BehaviorState.REST
-        self.imu_subscription = self.create_subscription(
-            Imu, '/imu', self.imu_orientation, 10
-        )
-        self.timer = self.create_timer(0.02, self.main_loop)
+        # self.imu_subscription = self.create_subscription(
+        #     Imu, '/imu', self.imu_orientation, 10
+        # )
+        self.timer = self.create_timer(0.1, self.main_loop)
     
     def main_loop(self):
         self.gait_changer()
