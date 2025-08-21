@@ -30,8 +30,15 @@ class RobotManager(Node):
             Joy, '/joy', self.joystick_callback, 10
         )
 
+        self.imu_subscription = self.create_subscription(
+            Imu, '/imu', self.imu_orientation, 10
+        )
+       
         self.angle_publisher = self.create_publisher(Float64MultiArray, '/legpo', 10)
 
+
+        self.timer = self.create_timer(0.02, self.main_loop)
+        
         # 기본 로봇 파라미터 설정
         self.body = body
         self.legs = legs
@@ -63,10 +70,7 @@ class RobotManager(Node):
         # 기본 컨트롤러 설정 (Rest 상태)
         self.current_controller = self.rest_controller
         self.state.behavior_state = BehaviorState.REST
-        self.imu_subscription = self.create_subscription(
-            Imu, '/imu', self.imu_orientation, 10
-        )
-        self.timer = self.create_timer(0.02, self.main_loop)
+        
     
     def main_loop(self):
         self.gait_changer()
