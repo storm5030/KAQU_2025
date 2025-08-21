@@ -22,8 +22,8 @@ setup(
         'console_scripts': [
             'RobotManagerNode = kaqu_controller.KaquCmdManager.RobotManagerNode:main',
             'AnglePulbisherNode = kaqu_controller.KaquCmdManager.AnglePublisher:main',
-            'debug = kaqu_controller.KaquCmdManager.test:main'
-            
+            'debug = kaqu_controller.KaquCmdManager.test:main',
+            'IMU_INS_Node = kaqu_controller.KaquCmdManager.IMU_INS_Node:main'
         ],
     },
 )
