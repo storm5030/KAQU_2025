@@ -11,8 +11,13 @@
 
     <xacro:include filename="kaqu.gazebo" />
 
-    <xacro:include filename="kaqu_imu.xacro"/>
+    <xacro:include filename="sensors/kaqu_imu.xacro"/>
     <xacro:imu_sensor_xacro/>
+
+    <xacro:include filename="sensors/kaqu_contact_feet.xacro" />
+
+    <xacro:include filename="sensors/kaqu_ft.xacro" />
+    
 
 </robot>
  
