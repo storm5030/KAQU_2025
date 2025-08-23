@@ -48,6 +48,9 @@ class TorquePublisher(Node):
             out = Float32MultiArray()
             out.data = list(self.tau_x)
             self.publisher.publish(out)
+            for i in out.data:
+                print(i)
+            print()
             self.valid = [False, False, False, False]
             
 def main(args=None):
