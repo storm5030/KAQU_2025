@@ -70,7 +70,7 @@ class StairTrotGaitController(TrotGaitController):
         # === stairmode에서 IMU 추종 완화 ===
         self.imu_follow_gain = 0.05
         self.imu_max_corr    = 0.08
-        self.imu_lpf_alpha   = 0.35
+        self.imu_lpf_alpha   = 0.4
         self._lp_roll_cmd = 0.0
         self._lp_pitch_cmd = 0.0
 
@@ -95,10 +95,10 @@ class StairTrotGaitController(TrotGaitController):
         self.swingController.min_swing_lift    = self.min_swing_lift
 
         # --- FF(선행) 피치 보정 파라미터 ---
-        self.ff_pitch_deg = 10.0
+        self.ff_pitch_deg = 8.0
         self.ff_ramp_start = 0.15
         self.ff_ramp_end   = 0.90
-        self.ff_height_drop = 0.008
+        self.ff_height_drop = 0.015
         self.ff_pitch_boost_when_single_rear = 1.00
         self.ff_drop_boost_when_single_rear  = 1.00
 
