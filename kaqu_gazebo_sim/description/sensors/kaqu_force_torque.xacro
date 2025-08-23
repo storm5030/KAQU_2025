@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="contact_feet_sensors">
+  <gazebo reference="fl_leg4_1">
+   
+  </gazebo>
+
+</robot>
