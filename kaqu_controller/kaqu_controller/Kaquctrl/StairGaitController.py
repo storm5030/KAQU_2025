@@ -45,13 +45,12 @@ class StairTrotGaitController(TrotGaitController):
         self.stair_tread = 0.20   # 계단 폭(앞으로 가야하는 길이)
         self.stair_rise  = 0.03   # 계단 높이
         # 안전 여유
-        self.step_margin = 0.02   # 스텝 길이 여유
-        self.lift_margin = 0.03   # 스윙 높이 여유
+        self.step_margin = 0.02
+        self.lift_margin = 0.03
 
         # 최소 보장값
-        self.min_step_length = self.stair_tread + self.step_margin   # 0.12 m
-        # self.min_swing_lift  = self.stair_rise  + self.lift_margin   # 0.08 m (원본)
-        self.min_swing_lift  = 0.10   # <<< changed: 0.08 → 0.10 (계단에서 기본 스윙 높이 여유)
+        self.min_step_length = max(self.stair_tread + self.step_margin, 0.20)   # 0.22 -> 주석상 0.12, 실제 값은 계단 설정에 맞춤
+        self.min_swing_lift  = 0.12   # 계단 기본 스윙 높이 여유 ↑(발 긁힘 방지)
 
         # z 에러 게인 (기존 설계 유지)
         z_error_constant = 0.5 * 4
@@ -69,30 +68,22 @@ class StairTrotGaitController(TrotGaitController):
         self.pid_controller.reset()
 
         # === stairmode에서 IMU 추종 완화 ===
-        # self.imu_follow_gain = 0.12
-        # self.imu_max_corr = 0.15
-        # self.imu_lpf_alpha = 0.2
-        self.imu_follow_gain = 0.08   # <<< changed
-        self.imu_max_corr    = 0.10   # <<< changed
-        self.imu_lpf_alpha   = 0.3    # <<< changed
+        self.imu_follow_gain = 0.05
+        self.imu_max_corr    = 0.08
+        self.imu_lpf_alpha   = 0.4
         self._lp_roll_cmd = 0.0
         self._lp_pitch_cmd = 0.0
 
         # === 다리 인덱스 순서: FR, FL, RR, RL = [0, 1, 2, 3] ===
-        # 앞다리(Front): FR, FL -> [0, 1]
-        # 뒷다리(Rear):  RR, RL -> [2, 3]
         self.front_leg_indices = getattr(leg.stair, "front_leg_indices", [0, 1])
         self.rear_leg_indices  = getattr(leg.stair, "rear_leg_indices",  [2, 3])
 
-        # 앞다리 스윙 높이 게인(요청사항: 앞다리 gain으로 조정)
-        # self.front_lift_gain = getattr(leg.stair, "front_lift_gain", 1.40)
-        # self.rear_lift_gain  = getattr(leg.stair, "rear_lift_gain", 1.70)
-        self.front_lift_gain = getattr(leg.stair, "front_lift_gain", 1.55)  # <<< changed
-        self.rear_lift_gain  = getattr(leg.stair, "rear_lift_gain", 1.85)   # <<< changed
+        # 스윙 높이 게인
+        self.front_lift_gain = getattr(leg.stair, "front_lift_gain", 1.60)
+        self.rear_lift_gain  = getattr(leg.stair, "rear_lift_gain", 1.80)
 
-        # 스윙 중인데 접촉이 남아있으면 여유고도(미터)
-        # self.extra_clearance = getattr(leg.stair, "extra_clearance", 0.03)
-        self.extra_clearance = getattr(leg.stair, "extra_clearance", 0.05)   # <<< changed
+        # 스윙 중 접촉 시 여유고도
+        self.extra_clearance = getattr(leg.stair, "extra_clearance", 0.06)
 
         # SwingController에 전달 (최소 보장값 포함!)
         self.swingController.front_leg_indices = self.front_leg_indices
@@ -104,32 +95,32 @@ class StairTrotGaitController(TrotGaitController):
         self.swingController.min_swing_lift    = self.min_swing_lift
 
         # --- FF(선행) 피치 보정 파라미터 ---
-        # self.ff_pitch_deg = 11.0
-        # self.ff_ramp_start = 0.15
-        # self.ff_ramp_end   = 0.95
-        # self.ff_height_drop = 0.010
-        self.ff_pitch_deg = 7.0       # <<< changed (과도 숙임 방지)
-        self.ff_ramp_start = 0.20     # <<< changed
-        self.ff_ramp_end   = 0.90     # <<< changed
-        self.ff_height_drop = 0.004   # <<< changed
-
-        # "두 번째 뒷발" 부스트 완화
-        self.ff_pitch_boost_when_single_rear = 1.00  # <<< changed (부스트 해제)
-        self.ff_drop_boost_when_single_rear  = 1.00  # <<< changed
+        self.ff_pitch_deg = 8.0
+        self.ff_ramp_start = 0.15
+        self.ff_ramp_end   = 0.90
+        self.ff_height_drop = 0.015
+        self.ff_pitch_boost_when_single_rear = 1.00
+        self.ff_drop_boost_when_single_rear  = 1.00
 
         # === (추가) 접촉 휴리스틱 파라미터 ===
         self.use_contact_heuristic = True
         self.heuristic_z_soft = 0.20   # 바디 기준 하한(예: -20cm)
         self.heuristic_z_margin = 0.01 # 여유 1cm
 
-        # SwingController에도 공유(동일 값 사용)
+        # SwingController에도 공유
         self.swingController.use_contact_heuristic = self.use_contact_heuristic
         self.swingController.heuristic_z_soft = self.heuristic_z_soft
         self.swingController.heuristic_z_margin = self.heuristic_z_margin
 
-    # --- (추가) contact 추정 유틸: state.contact가 없거나 값이 이상하면 z-기반 휴리스틱 ---
+        # <<< safety: 넘어짐/랩핑 failsafe 파라미터
+        self.tip_roll_deg   = 30.0   # 이 이상 기울면 안전모드
+        self.tip_pitch_deg  = 35.0
+        self.hard_tip_deg   = 75.0   # 심각 기울기(전복 의심)
+        self.safemode_hold_sec = 0.6
+        self._safe_mode_until_tick = -1
+
+    # --- contact 추정 (그대로)
     def _get_in_contact(self, state, leg_index, robot_height):
-        # 1) 실측 contact가 있으면 그대로 사용(0/1만 유효)
         if hasattr(state, "contact"):
             try:
                 v = int(state.contact[leg_index])
@@ -137,7 +128,6 @@ class StairTrotGaitController(TrotGaitController):
                     return bool(v)
             except Exception:
                 pass
-        # 2) 휴리스틱: 발 z가 바디 기준 하한 근처면 접촉으로 간주
         if getattr(self, "use_contact_heuristic", False):
             try:
                 z_soft = robot_height - float(getattr(self, "heuristic_z_soft", 0.20))
@@ -156,8 +146,25 @@ class StairTrotGaitController(TrotGaitController):
     def _lpf(self, prev, new, alpha):
         return alpha * prev + (1.0 - alpha) * new
 
+    # <<< safety: 각도 유틸
+    def _normalize_angles_and_units(self, roll, pitch):
+        """IMU가 도(deg)로 들어오면 rad로 변환하고 [-π, π]로 랩핑."""
+        # 단위 추정: 360° 수준이면 deg
+        if abs(roll) > 3.0 or abs(pitch) > 3.0:
+            # 값이 3 rad(≈172°)를 넘으면 deg일 확률 ↑
+            if abs(roll) > np.pi*2 or abs(pitch) > np.pi*2:
+                roll = np.deg2rad(roll)
+                pitch = np.deg2rad(pitch)
+        # 랩핑
+        roll = (roll + np.pi) % (2*np.pi) - np.pi
+        pitch = (pitch + np.pi) % (2*np.pi) - np.pi
+        return roll, pitch
+
     def run(self, state, command):
-        """한 틱마다: trot step -> IMU 완화 보정 -> 발 위치 반환"""
+        """한 틱마다: trot step -> IMU 보정/FF -> 발 위치 반환 (+ 안전모드)"""
+        # 현재 틱
+        cur_tick = int(getattr(state, "ticks", 0))
+
         vx, vy, wz = _get_velocity3(command)
         command.velocity = [np.clip(vx, -self.max_x_vel,  self.max_x_vel),
                             np.clip(vy, -self.max_y_vel,  self.max_y_vel),
@@ -169,12 +176,24 @@ class StairTrotGaitController(TrotGaitController):
         state.robot_height = command.robot_height
         new_foot_locations = state.foot_location.copy()
 
-        # === (A) IMU 보정(완화/부드럽게) ===
-        if self.use_imu:
-            roll = float(getattr(state, "imu_roll", 0.0))
-            pitch = float(getattr(state, "imu_pitch", 0.0))
-            inverted = bool(getattr(state, "is_inverted", False))
+        # --- IMU 읽기 + 단위/랩핑 가드  # <<< safety
+        roll_raw = float(getattr(state, "imu_roll", 0.0))
+        pitch_raw = float(getattr(state, "imu_pitch", 0.0))
+        inverted = bool(getattr(state, "is_inverted", False))
+        roll, pitch = self._normalize_angles_and_units(roll_raw, pitch_raw)
 
+        # --- 안전모드 판정  # <<< safety
+        tip = (abs(roll) > np.deg2rad(self.tip_roll_deg)) or (abs(pitch) > np.deg2rad(self.tip_pitch_deg)) or inverted
+        hard_tip = (abs(roll) > np.deg2rad(self.hard_tip_deg)) or (abs(pitch) > np.deg2rad(self.hard_tip_deg))
+        if tip or hard_tip:
+            hold = max(1, int(self.safemode_hold_sec / max(self.time_step, 1e-3)))
+            self._safe_mode_until_tick = cur_tick + hold
+
+        safe_mode = (cur_tick <= self._safe_mode_until_tick)
+
+        # === (A) IMU 보정(완화/부드럽게) ===
+        apply_imu = (self.use_imu and (not safe_mode))  # <<< safety: 안전모드에선 IMU 보정 끔
+        if apply_imu:
             if self.imu_gate and (abs(roll) > self.th_off or abs(pitch) > self.th_off or inverted):
                 self.imu_gate = False
                 self.pid_controller.reset()
@@ -200,10 +219,8 @@ class StairTrotGaitController(TrotGaitController):
                 tp = np.tan(self._lp_pitch_cmd)
 
                 for leg_index in range(4):
-                    # (변경) is_stance 판단: contact 없으면 z-휴리스틱
                     is_stance = self._get_in_contact(state, leg_index, command.robot_height)
 
-                    # z 보정: stance 위주
                     dz = 0.0
                     if is_stance:
                         new_z = command.robot_height * cp * cr
@@ -211,70 +228,73 @@ class StairTrotGaitController(TrotGaitController):
 
                     new_foot_locations[2, leg_index] += dz
 
-                    # x,y 보정: swing에는 약하게
-                    # xy_gain = 1.0 if is_stance else 0.3
-                    xy_gain = 1.0 if is_stance else 0.2   # <<< changed (스윙 중 XY 끌림 더 약화)
+                    # swing에는 더 약하게
+                    xy_gain = 1.0 if is_stance else 0.2
                     z_now_after = new_foot_locations[2, leg_index]
                     dx = (-1.0 * z_now_after) * tp * xy_gain
                     dy = ( 1.0 * z_now_after) * tr * xy_gain
-
                     new_foot_locations[0, leg_index] += dx
                     new_foot_locations[1, leg_index] += dy
 
-        # === (B) rear 스윙시에만 FF(선행) 피치로 전방 숙이기 + COM 살짝 낮추기 ===
-        # 현재 phase 접지 패턴: [FR, FL, RR, RL] = [0,1,2,3]
-        try:
-            contact_modes = self.contacts(int(getattr(state, "ticks", 0)))
-        except Exception:
-            contact_modes = [1, 1, 1, 1]  # 임시 폴백
+        # === (B) rear 스윙 FF 피치/낙하: 안전모드면 미적용  # <<< safety
+        skip_ff = safe_mode
+        if not skip_ff:
+            try:
+                contact_modes = self.contacts(int(getattr(state, "ticks", 0)))
+            except Exception:
+                contact_modes = [1, 1, 1, 1]
 
-        rr_swing = (contact_modes[2] == 0)   # 어떤 발이 스윙중인지 확인
-        rl_swing = (contact_modes[3] == 0)
-        rear_swinging = rr_swing or rl_swing
+            rr_swing = (contact_modes[2] == 0)
+            rl_swing = (contact_modes[3] == 0)
+            rear_swinging = rr_swing or rl_swing
 
-        if rear_swinging:
-            # 현재 phase 안에서 스윙 진행률(0~1)
-            swing_prop = float(self.subphase_ticks(state.ticks)) / float(max(self.swing_ticks, 1))
+            if rear_swinging:
+                swing_prop = float(self.subphase_ticks(state.ticks)) / float(max(self.swing_ticks, 1))
+                s0, s1 = self.ff_ramp_start, self.ff_ramp_end
+                if swing_prop <= s0: r = 0.0
+                elif swing_prop >= s1: r = 1.0
+                else: r = (swing_prop - s0) / max((s1 - s0), 1e-6)
 
-            # 램프 계수: ff_ramp_start~ff_ramp_end 구간에서 0 -> 1
-            s0, s1 = self.ff_ramp_start, self.ff_ramp_end
-            if swing_prop <= s0:
-                r = 0.0
-            elif swing_prop >= s1:
-                r = 1.0
-            else:
-                r = (swing_prop - s0) / max((s1 - s0), 1e-6)
+                p_ff = -np.deg2rad(self.ff_pitch_deg) * r
+                t_pitch = np.tan(p_ff)
+                dz_drop = self.ff_height_drop * r
 
-            # 목표 피치(라디안): "앞으로 숙이기"
-            p_ff = -np.deg2rad(self.ff_pitch_deg) * r
-            t_pitch = np.tan(p_ff)
-            # COM 살짝 낮추기(과하면 충돌/미끄럼 가능, 0~1cm 권장)
-            dz_drop = self.ff_height_drop * r
+                only_one_rear_swing = (rr_swing ^ rl_swing)
+                if only_one_rear_swing:
+                    p_ff   *= self.ff_pitch_boost_when_single_rear
+                    t_pitch = np.tan(p_ff)
+                    dz_drop *= self.ff_drop_boost_when_single_rear
 
-            # 이번 틱에 "한쪽 뒷발만" 스윙이면 (완화: 부스트 해제)
-            only_one_rear_swing = (rr_swing ^ rl_swing)
-            if only_one_rear_swing:
-                p_ff   *= self.ff_pitch_boost_when_single_rear
-                t_pitch = np.tan(p_ff)  # 재계산
-                dz_drop *= self.ff_drop_boost_when_single_rear
+                for i in range(4):
+                    x = new_foot_locations[0, i]
+                    new_foot_locations[2, i] += x * t_pitch
 
-            # z += x * tan(pitch)
-            for i in range(4):
-                x = new_foot_locations[0, i]
-                new_foot_locations[2, i] += x * t_pitch
+                new_foot_locations[2, :] -= dz_drop
 
-            # COM 살짝 낮추기
-            new_foot_locations[2, :] -= dz_drop
-            # ---z 하한 소프트 클립으로 포화 패턴 완화 ---
-            z_soft = command.robot_height - 0.20
-            margin = 0.010                        # <<< changed: 5mm → 10mm
-            z = new_foot_locations[2, :]
-            mask = z < (z_soft + margin)
-            if np.any(mask):
-                new_foot_locations[2, mask] = z_soft + margin - 0.5 * ((z_soft + margin) - z[mask])
+                z_soft = command.robot_height - 0.20
+                margin = 0.010
+                z = new_foot_locations[2, :]
+                mask = z < (z_soft + margin)
+                if np.any(mask):
+                    new_foot_locations[2, mask] = z_soft + margin - 0.5 * ((z_soft + margin) - z[mask])
+                new_foot_locations[2, :] = np.maximum(new_foot_locations[2, :], z_soft + margin)
 
-            # 추가: 전체에 대해 소프트 하한 가드 한 번 더 적용  # <<< changed
-            new_foot_locations[2, :] = np.maximum(new_foot_locations[2, :], z_soft + margin)
+        # <<< safety: 안전모드 동작(정지/고도상향/XY감속)
+        if safe_mode:
+            # 속도 즉시 0
+            command.velocity = [0.0, 0.0, 0.0]
+            command.yaw_rate = 0.0
+            # IMU 명령 잔류 제거
+            self._lp_roll_cmd = 0.0
+            self._lp_pitch_cmd = 0.0
+            # 스윙 기본값 강화
+            self.swingController._failsafe_min_swing = 0.12
+            self.swingController._failsafe_extra_clearance = 0.06
+            self.swingController._failsafe_xy_scale = 0.5
+        else:
+            self.swingController._failsafe_min_swing = None
+            self.swingController._failsafe_extra_clearance = None
+            self.swingController._failsafe_xy_scale = None
 
         return new_foot_locations
 
@@ -297,63 +317,65 @@ class StairSwingController(TrotSwingController):
     min_swing_lift  = 0.08  # m
 
     # === 뒷다리 전진 램프 back-off/forward profile parameters ===
-    rear_backoff_dx    = -0.07  # m (초반에 뒤로 당길 최대치; 음수=뒤쪽)
-    rear_backoff_lift  = 0.020  # m (back-off 동안 추가 z)
-    rear_backoff_start = 0.00   # 스윙 진행률 시작
-    rear_backoff_peak  = 0.35   # 여기까지 back-off ↑
-    rear_backoff_end   = 0.70   # 여기까지 back-off ↓(이후 0)
+    rear_backoff_dx    = -0.07
+    rear_backoff_lift  = 0.020
+    rear_backoff_start = 0.00
+    rear_backoff_peak  = 0.35
+    rear_backoff_end   = 0.65
 
-    # >>> 앞다리도 코 간섭 방지를 위한 back-off/forward 프로파일
-    front_backoff_dx    = -0.06  # <<< changed: -0.04 → -0.06 (살짝 더 뒤로)
-    front_backoff_lift  = 0.010
+    # >>> 앞다리도 코 간섭 방지 back-off/forward
+    front_backoff_dx    = -0.03
+    front_backoff_lift  = 0.008
     front_backoff_start = 0.05
-    front_backoff_peak  = 0.30
-    front_backoff_end   = 0.60
+    front_backoff_peak  = 0.28
+    front_backoff_end   = 0.55
 
     # >>> 앞다리 late-XY 램프/브레이크
-    front_xy_ramp_start = 0.55   # <<< changed: 0.45 → 0.55 (가속을 더 늦게)
-    front_brake_start   = 0.80   # <<< changed: 0.85 → 0.80 (브레이크 조금 일찍)
-    front_brake_ratio   = 0.6    # <<< changed: 0.5 → 0.6 (감속 더 강하게)
+    front_xy_ramp_start = 0.40
+    front_brake_start   = 0.85
+    front_brake_ratio   = 0.35
 
     def __init__(self, stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance):
         super().__init__(stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance)
 
-        # >>>두 번째 뒷발 부스트를 위한 상태 변수
+        # 두 번째 뒷발 부스트 상태
         self._prev_tick = -1
         self._prev_contact = np.array([1, 1, 1, 1], dtype=int)
-        self._second_rear_boost_leg = None        # 2(RR) 또는 3(RL)
-        self._second_rear_boost_expire = -1       # 부스트 만료 tick
-        self.second_rear_boost_gain = 1.50        # X 델타 배수 (원본보다 소폭 강화되어 있었음)
-        self.second_rear_boost_window = int(0.35 * self.swing_ticks)  # 착지 후 ~35% 스윙창
+        self._second_rear_boost_leg = None
+        self._second_rear_boost_expire = -1
+        self.second_rear_boost_gain = 1.50
+        self.second_rear_boost_window = int(0.35 * self.swing_ticks)
 
-        # >>> 못 올라오는 '특정 뒷발'만 z를 더 주는 적응형 부스트 상태/파라미터
-        self._rear_extra_z = np.zeros(4, dtype=float)   # 다리별 추가 z (m)
-        self._rear_contact_stuck = np.zeros(4, dtype=int)  # 스윙 중 접촉 카운트
-        self.rear_extra_z_gain = 0.025
-        self.rear_extra_z_max  = 0.040
-        self.rear_extra_z_decay = 0.85
+        # 적응형 z(앞/뒤)
+        self._rear_extra_z = np.zeros(4, dtype=float)
+        self._rear_contact_stuck = np.zeros(4, dtype=int)
+        self.rear_extra_z_gain = 0.040
+        self.rear_extra_z_max  = 0.060
+        self.rear_extra_z_decay = 0.90
         self.rear_contact_stuck_thresh = 2
 
-        # >>> (front adaptive z): 못 올라오는 '특정 앞발'만 z를 더 주는 상태/파라미터
-        self._front_extra_z = np.zeros(4, dtype=float)       # 다리별 추가 z (m) - 앞다리 인덱스만 사용
-        self._front_contact_stuck = np.zeros(4, dtype=int)   # 스윙 중 접촉 카운트
+        self._front_extra_z = np.zeros(4, dtype=float)
+        self._front_contact_stuck = np.zeros(4, dtype=int)
         self.front_extra_z_gain = 0.020
         self.front_extra_z_max  = 0.035
         self.front_extra_z_decay = 0.85
         self.front_contact_stuck_thresh = 2
 
-        # >>>  앞발 z-정점에서 x 전진 부스트 파라미터
-        self.front_apex_x_boost_gain  = 0.05
-        self.front_apex_x_boost_sigma = 0.15
+        # 앞발 z-정점에서 x 전진 부스트
+        self.front_apex_x_boost_gain  = 0.08
+        self.front_apex_x_boost_sigma = 0.12
 
-        # === (추가) 접촉 휴리스틱 파라미터(상위에서 전달됨) ===
+        # (상위에서 내려오는 휴리스틱 파라미터)
         self.use_contact_heuristic = getattr(self, "use_contact_heuristic", True)
         self.heuristic_z_soft = getattr(self, "heuristic_z_soft", 0.20)
         self.heuristic_z_margin = getattr(self, "heuristic_z_margin", 0.01)
 
-    # --- (추가) contact 추정 유틸: state.contact가 없거나 값이 이상하면 z-기반 휴리스틱 ---
+        # <<< safety: 상위 failsafe 값 전달용(없으면 None)
+        self._failsafe_min_swing = None
+        self._failsafe_extra_clearance = None
+        self._failsafe_xy_scale = None
+
     def _get_in_contact(self, state, leg_index, robot_height):
-        # 1) 실측 contact가 있으면 그대로 사용(0/1만 유효)
         if hasattr(state, "contact"):
             try:
                 v = int(state.contact[leg_index])
@@ -361,7 +383,6 @@ class StairSwingController(TrotSwingController):
                     return bool(v)
             except Exception:
                 pass
-        # 2) 휴리스틱: 발 z가 바디 기준 하한 근처면 접촉으로 간주
         if getattr(self, "use_contact_heuristic", False):
             try:
                 z_soft = robot_height - float(getattr(self, "heuristic_z_soft", 0.20))
@@ -372,14 +393,13 @@ class StairSwingController(TrotSwingController):
                 return False
         return False
 
-    rear_lift_delay = 0.35  # 이 구간 전에는 증폭 X
-    rear_lift_full  = 0.70  # 이 이후부터 full rear_lift_gain
+    rear_lift_delay = 0.35
+    rear_lift_full  = 0.70
 
     def _clamp01(self, x):
         return max(0.0, min(1.0, x))
 
     def _ramp(self, s0, s1, s):
-        """s0~s1에서 0→1 선형 램프"""
         if s <= s0: return 0.0
         if s >= s1: return 1.0
         return (s - s0) / max(s1 - s0, 1e-6)
@@ -391,73 +411,64 @@ class StairSwingController(TrotSwingController):
         else:
             swing_h = self.z_leg_lift * (1.0 - (swing_phase - 0.5) / 0.5)
 
-        # 앞/뒤 다리 별 게인 (앞다리는 즉시, 뒷다리는 "지연 + 램프")
+        # 앞/뒤 다리 별 게인
         if leg_index is not None:
             if leg_index in self.front_leg_indices:
                 swing_h *= self.front_lift_gain
-                # 앞다리 back-off 구간엔 z 여유 조금 추가
                 s = swing_phase
                 up   = self._ramp(self.front_backoff_start, self.front_backoff_peak, s)
                 down = 1.0 - self._ramp(self.front_backoff_peak, self.front_backoff_end, s)
                 bump = min(up, down)
                 swing_h += self.front_backoff_lift * bump
             elif leg_index in self.rear_leg_indices:
-                # rear: swing_phase < delay => 1.0, delay~full 사이 선형 램프, 이후 full
                 if swing_phase <= self.rear_lift_delay:
                     gain = 1.0
                 elif swing_phase >= self.rear_lift_full:
                     gain = self.rear_lift_gain
                 else:
-                    # 선형 램프
                     t = ((swing_phase - self.rear_lift_delay) /
                          max(self.rear_lift_full - self.rear_lift_delay, 1e-6))
                     gain = 1.0 + t * (self.rear_lift_gain - 1.0)
                 swing_h *= gain
 
-        # 스윙 중인데 접촉이 남아있으면 여유고도 추가
+        # 스윙 중 접촉이면 여유고도 추가
         if in_contact:
             swing_h += self.extra_clearance
 
-        # rear z-plateau (코 넘김 여유)
+        # rear z-plateau
         if leg_index in self.rear_leg_indices:
             s = swing_phase
             if 0.45 < s < 0.60:
-                w = 1.0 - abs((s - 0.525) / 0.075)  # 0→1→0
+                w = 1.0 - abs((s - 0.525) / 0.075)
                 swing_h += 0.005 * w
 
-        # 못 올라오는 '특정 뒷발' 적응형 z
+        # 적응형 z
         if leg_index in self.rear_leg_indices:
             swing_h += self._rear_extra_z[leg_index]
-
-        # (front adaptive z)
         if leg_index in self.front_leg_indices:
             swing_h += self._front_extra_z[leg_index]
 
-        # --- 최소 스윙 높이 강제 (계단 높이+여유) ---
-        swing_h = max(swing_h, self.min_swing_lift)
+        # --- 최소 스윙 높이 강제 ---
+        min_z = self.min_swing_lift
+        if self._failsafe_min_swing is not None:          # <<< safety
+            min_z = max(min_z, self._failsafe_min_swing)
+        swing_h = max(swing_h, min_z)
         return swing_h
 
     def raibert_touchdown_location(self, leg_index, command, swing_phase):
         vx, vy, wz = _get_velocity3(command)
 
         if swing_phase < 0.5:
-            # 초반은 제자리 근처에서 들어올리기
             return self.default_stance[:, leg_index]
         else:
-            # 기본: 2 * v * T_half
-            base_delta_2d = 2 * np.array([vx, vy]) * self.phase_length * self.time_step
+            base_delta_2d = 2.2 * np.array([vx, vy]) * self.phase_length * self.time_step
 
-            # 최소 보폭(계단용): 후반으로 갈수록 강하게 적용
-            lam_start = 0.35
+            lam_start = 0.3
             lam = (swing_phase - lam_start) / (1.0 - lam_start)
             lam = max(0.0, min(1.0, lam))
 
-            # 목표 step_x: base와 최소보폭 사이 보간
-            # step_x_min = self.min_step_length  # 원본 0.12
-            step_x_min = 0.09  # <<< changed: 0.12 → 0.09 (넘겨찍기 방지)
-
-            # vx가 거의 0이면 +방향 고정 대신 0.0으로
-            sign = np.sign(vx) if abs(vx) > 0.03 else 0.0  # <<< changed
+            step_x_min = 0.15
+            sign = np.sign(vx) if abs(vx) > 0.03 else 0.0
 
             step_x_target = (1.0 - lam) * base_delta_2d[0] + lam * (sign * step_x_min)
             delta_pos = np.array([step_x_target, base_delta_2d[1], 0.0])
@@ -466,41 +477,25 @@ class StairSwingController(TrotSwingController):
             rotation = rotz(theta)
             return np.matmul(rotation, self.default_stance[:, leg_index]) + delta_pos
 
-
     def _update_second_rear_boost_flag(self, state):
-        """
-        매 틱마다 이전 contact 상태와 현재를 비교하여,
-        한쪽 뒷발이 막 착지했을 때 '다음' 뒷발에 부스트 플래그를 설정한다.
-        """
         try:
             cur_tick = int(state.ticks)
-            # 이전 틱과 같으면 중복 실행 방지
             if cur_tick == self._prev_tick:
                 return
         except Exception:
-            # state.ticks가 없으면 실행 불가
             return
 
-        # 현재 4개 다리의 접촉 상태를 가져옴
         current_contact = np.array([
             self._get_in_contact(state, i, state.robot_height) for i in range(4)
         ], dtype=int)
 
-        # 뒷다리 인덱스: 2(RR), 3(RL)
         rear_indices = self.rear_leg_indices
-
-        # 뒷다리가 (스윙 -> 접지)로 바뀐 순간을 감지
         for leg_idx in rear_indices:
-            # 이전에는 스윙(0)이었고, 지금은 접지(1) 상태인가?
             if self._prev_contact[leg_idx] == 0 and current_contact[leg_idx] == 1:
-                # 그렇다면, 다른 쪽 뒷발이 바로 '두 번째 뒷발'이 된다.
                 other_rear_idx = rear_indices[0] if leg_idx == rear_indices[1] else rear_indices[1]
-
-                # 부스트 대상 다리와 부스트가 유효한 시간(tick)을 설정
                 self._second_rear_boost_leg = other_rear_idx
                 self._second_rear_boost_expire = cur_tick + self.second_rear_boost_window
 
-        # 현재 상태를 다음 틱을 위해 저장
         self._prev_contact = current_contact
         self._prev_tick = cur_tick
 
@@ -510,59 +505,48 @@ class StairSwingController(TrotSwingController):
 
         swing_prop += (1.0 / self.swing_ticks)
 
-        # 매 틱 최초 호출에서 최근 뒷발 착지 이벤트 갱신
+        # 최근 뒷발 착지 이벤트 갱신
         self._update_second_rear_boost_flag(state)
 
-        # (변경) in_contact 판단: contact 없으면 z-휴리스틱
         in_contact = self._get_in_contact(state, leg_index, command.robot_height)
 
         swing_h = self.swing_height(swing_prop, leg_index=leg_index, in_contact=in_contact)
         touchdown_location = self.raibert_touchdown_location(leg_index, command, swing_prop)
 
         time_left = self.time_step * self.swing_ticks * (1.0 - swing_prop)
-
         velocity_xy = (touchdown_location - foot_location) / float(max(time_left, 1e-6)) * np.array([1.0, 1.0, 0.0])
         delta_xy = velocity_xy * self.time_step
 
-        # === rear 전용 back-off(초반 뒤로 → 중반 복귀)의 미분 효과를 속도로 반영 ===
+        # rear back-off 미분 효과
         if leg_index in self.rear_leg_indices:
             up   = self._ramp(self.rear_backoff_start, self.rear_backoff_peak, swing_prop)
             down = 1.0 - self._ramp(self.rear_backoff_peak, self.rear_backoff_end, swing_prop)
             bump = min(up, down)
 
             backoff_offset_x = self.rear_backoff_dx * bump
-
             next_s = min(1.0, swing_prop + (1.0 / self.swing_ticks))
             up_n   = self._ramp(self.rear_backoff_start, self.rear_backoff_peak, next_s)
             down_n = 1.0 - self._ramp(self.rear_backoff_peak, self.rear_backoff_end, next_s)
             bump_n = min(up_n, down_n)
             backoff_offset_x_next = self.rear_backoff_dx * bump_n
-
             backoff_dx_step = (backoff_offset_x_next - backoff_offset_x)
             delta_xy += np.array([backoff_dx_step, 0.0, 0.0])
 
-            # rear late-XY 램프: 0.5~1.0에서 0.3배→1.0배
             lam = self._clamp01((swing_prop - 0.5) / 0.5)
             delta_xy *= (0.4 + 0.6 * lam)
-            # z 최대 부근(≈0.5)에서 x를 한 번 더 밀어주는 가우시안 부스트
             mid = np.exp(-((swing_prop - 0.5)**2) / (2 * 0.12**2))
             delta_xy[0] *= (1.0 + 0.45 * mid)
 
-            # 터치다운 직전 브레이크, 속도감소 (완화 강화)
-            # brake = self._clamp01((swing_prop - 0.85) / 0.15)
-            # delta_xy *= (1.0 - 0.5 * brake)
-            brake = self._clamp01((swing_prop - 0.80) / 0.20)  # <<< changed
-            delta_xy *= (1.0 - 0.6 * brake)                    # <<< changed
+            brake = self._clamp01((swing_prop - 0.70) / 0.30)
+            delta_xy *= (1.0 - 0.8 * brake)
 
             other_rear = 3 if leg_index == 2 else 2
             other_in_contact = self._get_in_contact(state, other_rear, command.robot_height)
-
-            # 반대쪽 뒷발이 아직 스윙(=지지 아님)인 동안은 더 보수적으로:
             if not other_in_contact:
                 delta_xy *= 0.7
-                swing_h += 0.008  # 6~12 mm
+                swing_h += 0.008
 
-            # >>> 스윙 중 접촉 기반의 '특정 뒷발' z 부스트 감지/갱신
+            # 스윙 중 접촉 기반 적응형 z
             if (0.25 < swing_prop < 0.85):
                 if in_contact:
                     self._rear_contact_stuck[leg_index] += 1
@@ -576,45 +560,32 @@ class StairSwingController(TrotSwingController):
                     if self._rear_contact_stuck[leg_index] > 0:
                         self._rear_contact_stuck[leg_index] -= 1
 
-            # 매 틱 감쇠(과도한 상승 방지)
             self._rear_extra_z[leg_index] *= self.rear_extra_z_decay
 
-        # >>> 앞다리 전용 back-off(초반 살짝 뒤로 → 중반 복귀) + late 램프/브레이크
+        # 앞다리 back-off + late 램프/브레이크
         if leg_index in self.front_leg_indices:
             up_f   = self._ramp(self.front_backoff_start, self.front_backoff_peak, swing_prop)
             down_f = 1.0 - self._ramp(self.front_backoff_peak, self.front_backoff_end, swing_prop)
             bump_f = min(up_f, down_f)
 
             front_backoff_offset_x = self.front_backoff_dx * bump_f
-
             next_s = min(1.0, swing_prop + (1.0 / self.swing_ticks))
             up_fn   = self._ramp(self.front_backoff_start, self.front_backoff_peak, next_s)
             down_fn = 1.0 - self._ramp(self.front_backoff_peak, self.front_backoff_end, next_s)
             bump_fn = min(up_fn, down_fn)
             front_backoff_offset_x_next = self.front_backoff_dx * bump_fn
-
             front_backoff_dx_step = (front_backoff_offset_x_next - front_backoff_offset_x)
             delta_xy += np.array([front_backoff_dx_step, 0.0, 0.0])
 
-            # 앞다리도 후반에 XY 램프 인가(앞계단으로 넘어갈 때 가속)
             lam_f = self._clamp01((swing_prop - self.front_xy_ramp_start) / (1.0 - self.front_xy_ramp_start))
             delta_xy *= (0.3 + 0.7 * lam_f)
 
-            # 터치다운 직전엔 감속 (강화)
             brake_f = self._clamp01((swing_prop - self.front_brake_start) / (1.0 - self.front_brake_start))
             delta_xy *= (1.0 - self.front_brake_ratio * brake_f)
 
-            # z-정점(≈0.5)에서만 X 전진 푸시 (약간 약화)
             mid_front = np.exp(-((swing_prop - 0.5)**2) / (2 * 0.10**2))
-            delta_xy[0] *= (1.0 + 0.25 * mid_front)  # <<< changed: 0.35 → 0.25
+            delta_xy[0] *= (1.0 + 0.25 * mid_front)
 
-            # 디버그: z-정점 근처에서 실제 푸시가 들어가는지 로그
-            if 0.45 < swing_prop < 0.55:
-                print(f"[Tick {int(getattr(state,'ticks',-1))}] front z-peak push: "
-                      f"leg={leg_index}, mid≈{mid_front:.2f}, dX≈{float(delta_xy[0]):.3f}, "
-                      f"extraZ={float(self._front_extra_z[leg_index]):.3f}")
-
-            # >>> (front adaptive z): 스윙 중 접촉 기반의 '특정 앞발' z 부스트 갱신
             if (0.25 < swing_prop < 0.85):
                 if in_contact:
                     self._front_contact_stuck[leg_index] += 1
@@ -627,36 +598,25 @@ class StairSwingController(TrotSwingController):
                 else:
                     if self._front_contact_stuck[leg_index] > 0:
                         self._front_contact_stuck[leg_index] -= 1
-
-            # 매 틱 감쇠(과도한 상승 방지)
             self._front_extra_z[leg_index] *= self.front_extra_z_decay
 
-            # 디버그: 앞발 스윙 중 접촉 누적 상태 확인
-            if (0.25 < swing_prop < 0.85) and in_contact:
-                print(f"[Tick {int(getattr(state,'ticks',-1))}] front stuck contact: "
-                      f"leg={leg_index}, cnt={int(self._front_contact_stuck[leg_index])}, "
-                      f"extraZ={float(self._front_extra_z[leg_index]):.3f}")
-
-            # 못 뜬 '특정 앞발'이면 z-정점(≈0.5) 부근에서 x를 더 밀어주기
-            apex_w = np.exp(-((swing_prop - 0.5)**2) / (2 * (self.front_apex_x_boost_sigma ** 2)))
-            if (self._front_extra_z[leg_index] > 0.0) or (self._front_contact_stuck[leg_index] > 0):
-                delta_xy[0] += self.front_apex_x_boost_gain * apex_w
-
-        # >>> '두 번째 뒷발'일 때 X 델타 부스트
+        # 두 번째 뒷발 X 델타 부스트
         if leg_index in self.rear_leg_indices:
             try:
                 cur_tick = int(getattr(state, "ticks"))
             except Exception:
                 cur_tick = -1
-
             if (self._second_rear_boost_leg == leg_index) and (cur_tick <= self._second_rear_boost_expire):
                 mid = np.exp(-((swing_prop - 0.5)**2) / (2 * 0.12**2))
                 delta_xy[0] *= (self.second_rear_boost_gain * (1.0 + 0.15 * mid))
 
-        # 마지막 틱: 정확히 터치다운 z로 세팅
+        # <<< safety: 안전모드면 XY 감속
+        if self._failsafe_xy_scale is not None:
+            delta_xy *= float(self._failsafe_xy_scale)
+
+        # 마지막 틱: 정확히 터치다운 z
         if swing_prop >= 1.0:
             new_position = touchdown_location * np.array([1.0, 1.0, 0.0]) + np.array([0.0, 0.0, command.robot_height])
-            # 반환 전 z 소프트 하한 가드  # <<< changed
             z_soft = command.robot_height - 0.20
             margin = 0.010
             new_position[2] = max(new_position[2], z_soft + margin)
@@ -664,7 +624,7 @@ class StairSwingController(TrotSwingController):
 
         z_vec = np.array([0.0, 0.0, swing_h + command.robot_height])
 
-        # >>> LOG: limit margin
+        # LOG: z-soft-limit
         try:
             z_min_soft = command.robot_height - 0.20
             z_leg = foot_location[2] + (swing_h)
@@ -674,7 +634,11 @@ class StairSwingController(TrotSwingController):
             pass
 
         out = foot_location * np.array([1.0, 1.0, 0.0]) + z_vec + delta_xy
-        # 반환 전 z 소프트 하한 가드  # <<< changed
         z_soft = command.robot_height - 0.20
         out[2] = max(out[2], z_soft + 0.010)
+
+        # <<< safety: 안전모드면 여유고도 더 추가
+        if self._failsafe_extra_clearance is not None:
+            out[2] += float(self._failsafe_extra_clearance)
+
         return out
