@@ -22,7 +22,8 @@ setup(
         'console_scripts': [
             'RobotManagerNode = kaqu_controller.KaquCmdManager.RobotManagerNode:main',
             'AnglePulbisherNode = kaqu_controller.KaquCmdManager.AnglePublisher:main',
-            'debug = kaqu_controller.KaquCmdManager.test:main'
+            'debug = kaqu_controller.KaquCmdManager.test:main',
+            'TorquePublisher = kaqu_controller.KaquCmdManager.TorquePublisher:main'
             
         ],
     },
