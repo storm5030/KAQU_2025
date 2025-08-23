@@ -117,6 +117,13 @@ def generate_launch_description():
             '/world/default/model/kaqu/link/rl_leg4_1/sensor/rl_foot_contact/contact@ros_gz_interfaces/msg/Contacts@gz.msgs.Contacts',
             '/world/default/model/kaqu/link/rr_leg4_1/sensor/rr_foot_contact/contact@ros_gz_interfaces/msg/Contacts@gz.msgs.Contacts',
 
+            # Force/Torque (GZ -> ROS)  ← 리맵 없이 원본 경로 사용
+            '/force_torque/fl_14@geometry_msgs/msg/Wrench@gz.msgs.Wrench',
+            '/force_torque/fr_14@geometry_msgs/msg/Wrench@gz.msgs.Wrench',
+            '/force_torque/rl_14@geometry_msgs/msg/Wrench@gz.msgs.Wrench',
+            '/force_torque/rr_14@geometry_msgs/msg/Wrench@gz.msgs.Wrench',
+
+
             # ROS 리맵 규칙 추가
             '--ros-args',
             '-r', '/world/default/model/kaqu/link/fl_leg4_1/sensor/fl_foot_contact/contact:=/contact/fl',

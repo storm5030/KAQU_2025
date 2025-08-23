@@ -22,6 +22,10 @@
     <plugin filename="libignition-gazebo-contact-system.so"
         name="ignition::gazebo::systems::Contact">
     </plugin>
+    <plugin
+      filename="ignition-gazebo-forcetorque-system"
+      name="ignition::gazebo::systems::ForceTorque">
+    </plugin>
     <!-- 조명 -->
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>
