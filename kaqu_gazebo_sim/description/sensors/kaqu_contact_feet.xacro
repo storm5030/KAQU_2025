@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="contact_feet_sensors">
+  <gazebo reference="fl_leg4_1">
+    <!-- Contact 센서 -->
+    <sensor name="fl_foot_contact" type="contact">
+      <always_on>true</always_on>
+      <update_rate>200</update_rate>
+      <contact>
+      <!-- 가제보 시뮬레이션상에서 기본 collision 이름 -->
+        <collision>fl_leg4_1_collision_1</collision> <!-- 해당 링크 안 collision 이름 -->
+      </contact>
+    </sensor>
+    <plugin filename="libignition-gazebo-touchplugin-system.so"
+          name="ignition::gazebo::systems::TouchPlugin">
+      <namespace>fl_foot</namespace>
+      <time>0.001</time>
+      <enabled>true</enabled>
+    </plugin>
+  </gazebo>
+
+  <gazebo reference="fr_leg4_1">
+    <sensor name="fr_foot_contact" type="contact">
+      <always_on>true</always_on>
+      <update_rate>200</update_rate>
+      <contact>
+        <collision>fr_leg4_1_collision_1</collision>
+      </contact>
+    </sensor>
+  </gazebo>
+
+  <gazebo reference="rl_leg4_1">
+    <sensor name="rl_foot_contact" type="contact">
+      <always_on>true</always_on>
+      <update_rate>200</update_rate>
+      <contact>
+        <collision>rl_leg4_1_collision_1</collision>
+      </contact>
+    </sensor>
+  </gazebo>
+
+  <gazebo reference="rr_leg4_1">
+    <sensor name="rr_foot_contact" type="contact">
+      <always_on>true</always_on>
+      <update_rate>200</update_rate>
+      <contact>
+        <collision>rr_leg4_1_collision_1</collision>
+      </contact>
+    </sensor>
+  </gazebo>
+
+
+</robot>
