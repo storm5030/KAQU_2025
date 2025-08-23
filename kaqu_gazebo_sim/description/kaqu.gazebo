@@ -9,37 +9,37 @@
 
   <gazebo reference="base_link">
     <material>${body_color}</material>
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
+    <mu1>3.5</mu1>
+    <mu2>3.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
     <gravity>true</gravity>
   </gazebo>
 
   <gazebo reference="fl_foot">
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
+    <mu1>3.5</mu1>
+    <mu2>3.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
   </gazebo>
 
   <gazebo reference="fr_foot">
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
+    <mu1>3.5</mu1>
+    <mu2>3.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
   </gazebo>
 
   <gazebo reference="rl_foot">
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
+    <mu1>3.5</mu1>
+    <mu2>3.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
   </gazebo>
 
   <gazebo reference="rr_foot">
-    <mu1>1.5</mu1>
-    <mu2>1.5</mu2>
+    <mu1>3.5</mu1>
+    <mu2>3.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
   </gazebo>

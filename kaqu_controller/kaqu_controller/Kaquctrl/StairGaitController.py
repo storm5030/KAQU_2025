@@ -50,7 +50,7 @@ class StairTrotGaitController(TrotGaitController):
 
         # 최소 보장값
         self.min_step_length = max(self.stair_tread + self.step_margin, 0.20)   # 0.22 -> 주석상 0.12, 실제 값은 계단 설정에 맞춤
-        self.min_swing_lift  = 0.12   # 계단 기본 스윙 높이 여유 ↑(발 긁힘 방지)
+        self.min_swing_lift  = 0.16   # 계단 기본 스윙 높이 여유 ↑(발 긁힘 방지)
 
         # z 에러 게인 (기존 설계 유지)
         z_error_constant = 0.5 * 4
@@ -70,7 +70,7 @@ class StairTrotGaitController(TrotGaitController):
         # === stairmode에서 IMU 추종 완화 ===
         self.imu_follow_gain = 0.05
         self.imu_max_corr    = 0.08
-        self.imu_lpf_alpha   = 0.4
+        self.imu_lpf_alpha   = 0.35
         self._lp_roll_cmd = 0.0
         self._lp_pitch_cmd = 0.0
 
@@ -80,10 +80,10 @@ class StairTrotGaitController(TrotGaitController):
 
         # 스윙 높이 게인
         self.front_lift_gain = getattr(leg.stair, "front_lift_gain", 1.60)
-        self.rear_lift_gain  = getattr(leg.stair, "rear_lift_gain", 1.80)
+        self.rear_lift_gain  = getattr(leg.stair, "rear_lift_gain", 2.0)
 
         # 스윙 중 접촉 시 여유고도
-        self.extra_clearance = getattr(leg.stair, "extra_clearance", 0.06)
+        self.extra_clearance = getattr(leg.stair, "extra_clearance", 0.08)
 
         # SwingController에 전달 (최소 보장값 포함!)
         self.swingController.front_leg_indices = self.front_leg_indices
@@ -95,16 +95,16 @@ class StairTrotGaitController(TrotGaitController):
         self.swingController.min_swing_lift    = self.min_swing_lift
 
         # --- FF(선행) 피치 보정 파라미터 ---
-        self.ff_pitch_deg = 8.0
+        self.ff_pitch_deg = 10.0
         self.ff_ramp_start = 0.15
         self.ff_ramp_end   = 0.90
-        self.ff_height_drop = 0.015
+        self.ff_height_drop = 0.008
         self.ff_pitch_boost_when_single_rear = 1.00
         self.ff_drop_boost_when_single_rear  = 1.00
 
         # === (추가) 접촉 휴리스틱 파라미터 ===
         self.use_contact_heuristic = True
-        self.heuristic_z_soft = 0.20   # 바디 기준 하한(예: -20cm)
+        self.heuristic_z_soft = 0.15   # 바디 기준 하한(예: -20cm)
         self.heuristic_z_margin = 0.01 # 여유 1cm
 
         # SwingController에도 공유
@@ -317,23 +317,23 @@ class StairSwingController(TrotSwingController):
     min_swing_lift  = 0.08  # m
 
     # === 뒷다리 전진 램프 back-off/forward profile parameters ===
-    rear_backoff_dx    = -0.07
+    rear_backoff_dx    = -0.05
     rear_backoff_lift  = 0.020
     rear_backoff_start = 0.00
-    rear_backoff_peak  = 0.35
+    rear_backoff_peak  = 0.30
     rear_backoff_end   = 0.65
 
     # >>> 앞다리도 코 간섭 방지 back-off/forward
-    front_backoff_dx    = -0.03
+    front_backoff_dx    = -0.02
     front_backoff_lift  = 0.008
     front_backoff_start = 0.05
-    front_backoff_peak  = 0.28
+    front_backoff_peak  = 0.25
     front_backoff_end   = 0.55
 
     # >>> 앞다리 late-XY 램프/브레이크
     front_xy_ramp_start = 0.40
     front_brake_start   = 0.85
-    front_brake_ratio   = 0.35
+    front_brake_ratio   = 0.25
 
     def __init__(self, stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance):
         super().__init__(stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance)
@@ -349,15 +349,15 @@ class StairSwingController(TrotSwingController):
         # 적응형 z(앞/뒤)
         self._rear_extra_z = np.zeros(4, dtype=float)
         self._rear_contact_stuck = np.zeros(4, dtype=int)
-        self.rear_extra_z_gain = 0.040
-        self.rear_extra_z_max  = 0.060
-        self.rear_extra_z_decay = 0.90
-        self.rear_contact_stuck_thresh = 2
+        self.rear_extra_z_gain = 0.070
+        self.rear_extra_z_max  = 0.100
+        self.rear_extra_z_decay = 0.92
+        self.rear_contact_stuck_thresh = 1
 
         self._front_extra_z = np.zeros(4, dtype=float)
         self._front_contact_stuck = np.zeros(4, dtype=int)
-        self.front_extra_z_gain = 0.020
-        self.front_extra_z_max  = 0.035
+        self.front_extra_z_gain = 0.025
+        self.front_extra_z_max  = 0.045
         self.front_extra_z_decay = 0.85
         self.front_contact_stuck_thresh = 2
 
@@ -393,8 +393,8 @@ class StairSwingController(TrotSwingController):
                 return False
         return False
 
-    rear_lift_delay = 0.35
-    rear_lift_full  = 0.70
+    rear_lift_delay = 0.40
+    rear_lift_full  = 0.80
 
     def _clamp01(self, x):
         return max(0.0, min(1.0, x))
@@ -461,13 +461,13 @@ class StairSwingController(TrotSwingController):
         if swing_phase < 0.5:
             return self.default_stance[:, leg_index]
         else:
-            base_delta_2d = 2.2 * np.array([vx, vy]) * self.phase_length * self.time_step
+            base_delta_2d = 2.6 * np.array([vx, vy]) * self.phase_length * self.time_step
 
             lam_start = 0.3
             lam = (swing_phase - lam_start) / (1.0 - lam_start)
             lam = max(0.0, min(1.0, lam))
 
-            step_x_min = 0.15
+            step_x_min = 0.20
             sign = np.sign(vx) if abs(vx) > 0.03 else 0.0
 
             step_x_target = (1.0 - lam) * base_delta_2d[0] + lam * (sign * step_x_min)
@@ -533,12 +533,12 @@ class StairSwingController(TrotSwingController):
             delta_xy += np.array([backoff_dx_step, 0.0, 0.0])
 
             lam = self._clamp01((swing_prop - 0.5) / 0.5)
-            delta_xy *= (0.4 + 0.6 * lam)
-            mid = np.exp(-((swing_prop - 0.5)**2) / (2 * 0.12**2))
-            delta_xy[0] *= (1.0 + 0.45 * mid)
+            delta_xy *= (0.6 + 0.4 * lam)
+            mid = np.exp(-((swing_prop - 0.55)**2) / (2 * 0.10**2))
+            delta_xy[0] *= (1.0 + self.second_rear_boost_gain * mid)
 
-            brake = self._clamp01((swing_prop - 0.70) / 0.30)
-            delta_xy *= (1.0 - 0.8 * brake)
+            brake = self._clamp01((swing_prop - 0.70) / 0.25)
+            delta_xy *= (1.0 - 0.4 * brake)
 
             other_rear = 3 if leg_index == 2 else 2
             other_in_contact = self._get_in_contact(state, other_rear, command.robot_height)
