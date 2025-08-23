@@ -205,28 +205,4 @@
         </ros2_control>
     </joint>
 
-     <joint name="fl_foot_joint" type="fixed">
-        <parent link="fl_leg4_1"/>
-        <child link="fl_foot"/>
-        <origin xyz="-0.007 0.103 0.002" rpy="0 0 0"/>
-     </joint>
-
-      <joint name="fr_foot_joint" type="fixed">
-        <parent link="fr_leg4_1"/>
-        <child link="fr_foot"/>
-        <origin xyz="0.007 0.103 0.002" rpy="0 0 0"/>
-     </joint>
-
-      <joint name="rl_foot_joint" type="fixed">
-        <parent link="rl_leg4_1"/>
-        <child link="rl_foot"/>
-        <origin xyz="-0.007 0.103 0.002" rpy="0 0 0"/>
-     </joint>
-
-      <joint name="rr_foot_joint" type="fixed">
-        <parent link="rr_leg4_1"/>
-        <child link="rr_foot"/>
-        <origin xyz="0.007 0.103 0.002" rpy="0 0 0"/>
-     </joint>
-
 </robot>
