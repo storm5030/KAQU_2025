@@ -324,7 +324,7 @@ class StairSwingController(TrotSwingController):
     rear_backoff_end   = 0.65
 
     # >>> 앞다리도 코 간섭 방지 back-off/forward
-    front_backoff_dx    = -0.02
+    front_backoff_dx    = -0.04
     front_backoff_lift  = 0.008
     front_backoff_start = 0.05
     front_backoff_peak  = 0.25
