@@ -37,7 +37,7 @@ class RobotManager(Node):
         self.angle_publisher = self.create_publisher(Float64MultiArray, '/legpo', 10)
 
 
-        self.timer = self.create_timer(0.4, self.main_loop)
+        self.timer = self.create_timer(0.02, self.main_loop)
         
         # 기본 로봇 파라미터 설정
         self.body = body
