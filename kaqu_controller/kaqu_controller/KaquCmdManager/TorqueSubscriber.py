@@ -41,7 +41,7 @@ class TorqueSubscriber:
                 callback_group=self._cb_group
             )
             self._subs.append(sub)
-            node.get_logger().info(f'[TorqueArraySubscriber] Sub {i}: {t} (Wrench torque.{self._axis})')
+            # node.get_logger().info(f'[TorqueArraySubscriber] Sub {i}: {t} (Wrench torque.{self._axis})')
 
     def _cb(self, msg: Wrench, idx: int):
         # getattr로 torque.x / torque.y / torque.z 선택

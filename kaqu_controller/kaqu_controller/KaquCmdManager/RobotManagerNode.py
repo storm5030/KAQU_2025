@@ -186,8 +186,8 @@ class RobotManager(Node):
         # 1) 내부 상태 갱신(권장)
         self.tau_x = tau_vec
         self.state.tau_vec = tau_vec
-        self.get_logger().debug(f'tau_x={tau_vec}')
-        self.get_logger().info(f'tau_x={self.state.tau_vec}')
+        # self.get_logger().debug(f'tau_x={tau_vec}')
+        # self.get_logger().info(f'tau_x={self.state.tau_vec}')
 
     def run(self):
         """현재 활성화된 컨트롤러 실행."""

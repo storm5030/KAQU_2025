@@ -4,6 +4,7 @@ from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
 from kaqu_controller.KaquIK.InverseKinematics import InverseKinematics
 from kaqu_controller.KaquIK.KinematicsCalculations import rotxyz, rotz
 from kaqu_controller.Kaquctrl.LowPassFilter import LowPassEMA, lpf_roll_pitch
+from kaqu_controller.Kaquctrl.ContactUtils import simple_contact_state
 import numpy as np
 
 
@@ -61,6 +62,12 @@ class StairTrotGaitController(TrotGaitController):
             local_positions = (R_comp @ local_positions).T
 
             new_foot_locations = self.inverse_kinematics.get_world_positions_from_leg(local_positions, dx=0, dy=0, dz=0, roll=0, pitch=0, yaw=0)
+        
+        # 임시 접촉 판단 확인 코드
+        print(state.tau_vec)
+        contact_states = simple_contact_state(state.tau_vec)
+        print(self.contacts(state.ticks))
+        print(contact_states)
 
         # 최종 출력은 base_link 좌표계 유지
         return new_foot_locations
