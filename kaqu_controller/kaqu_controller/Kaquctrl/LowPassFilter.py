@@ -1,4 +1,5 @@
 import math
+import numpy as np
 
 class LowPassEMA:
     """
@@ -54,3 +55,10 @@ class LowPassEMA:
     def y(self) -> float:
         """현재 필터 출력값 조회"""
         return self._y
+
+def lpf_roll_pitch(state, lpf_r: LowPassEMA, lpf_p: LowPassEMA):
+    """ state.imu_roll, state.imu_pitch (rad)를 LPF해서 (roll_f, pitch_f) 반환 """
+    roll_f  = lpf_r.update(state.imu_roll)
+    pitch_f = lpf_p.update(state.imu_pitch)
+    print(f"Filter: Roll: {np.degrees(roll_f)}, Pitch: {np.degrees(pitch_f)}")
+    return roll_f, pitch_f

@@ -128,6 +128,8 @@ class TrotSwingController(object):
         self.default_stance = default_stance
 
     def raibert_touchdown_location(self, leg_index, command):
+        # 발을 내릴 때 진행 방향으로 뻗기
+        # 발이 이번 swing에서 최종적으로 도달해야 하는 위치를 리턴함. (속도 계산 X)
         delta_pos_2d = np.array(command.velocity) * self.phase_length * self.time_step
         delta_pos = np.array([delta_pos_2d[0], delta_pos_2d[1], 0])
 
@@ -159,6 +161,7 @@ class TrotSwingController(object):
             #[x,y,z]
             return new_position
         
+        # 여기에서 발의 x, y방향 속도 계산
         velocity = (touchdown_location - foot_location) / float(time_left) * np.array([1, 1, 0])
 
         delta_foot_location = velocity * self.time_step  # 이번 스텝에서 foot_location이 얼마나 이동할지

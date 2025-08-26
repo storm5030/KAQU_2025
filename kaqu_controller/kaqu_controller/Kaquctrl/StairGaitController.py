@@ -3,6 +3,7 @@ from kaqu_controller.Kaquctrl.PIDController import PID_controller
 from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
 from kaqu_controller.KaquIK.InverseKinematics import InverseKinematics
 from kaqu_controller.KaquIK.KinematicsCalculations import rotxyz, rotz
+from kaqu_controller.Kaquctrl.LowPassFilter import LowPassEMA, lpf_roll_pitch
 import numpy as np
 
 
@@ -28,6 +29,10 @@ class StairTrotGaitController(TrotGaitController):
         self.pid_controller = PID_controller(0.5, 0.02, 0.002)  # 이 숫자들은 임시 값 (kp, ki, kd)
         self.pid_controller.reset()  # 내부 변수들 초기화
 
+        # IMU센서 보정용 필터 세팅
+        self.lpf_r = LowPassEMA(init=0.0)
+        self.lpf_p = LowPassEMA(init=0.0)
+
         # PID 보정 게인 조정 
     def run(self, state, command):
         # 1) 기본 보행 궤적 (base_link 좌표계)
@@ -44,8 +49,7 @@ class StairTrotGaitController(TrotGaitController):
         self.inverse_kinematics = InverseKinematics(body, legs,x_shift_front,x_shift_back)
 
         if self.use_imu:
-            roll  = state.imu_roll
-            pitch = state.imu_pitch
+            roll, pitch = lpf_roll_pitch(state, self.lpf_r, self.lpf_p)
 
             local_positions = self.inverse_kinematics.get_local_positions_from_world(new_foot_locations, dx=0, dy=0, dz=0, roll=0, pitch=0, yaw=0).T
 
@@ -70,6 +74,7 @@ class StairSwingController(TrotSwingController):
 
     def raibert_touchdown_location(self, leg_index, command, swing_phase):
         # 발을 내릴 때 진행 방향으로 뻗기
+        # 발이 이번 swing에서 최종적으로 도달해야 하는 위치를 리턴함. (속도 계산 X)
         delta_pos_2d = np.array(command.velocity) * self.phase_length * self.time_step
         delta_pos = np.array([delta_pos_2d[0], delta_pos_2d[1], 0])
 
@@ -79,11 +84,13 @@ class StairSwingController(TrotSwingController):
         return np.matmul(rotation, self.default_stance[:, leg_index]) + delta_pos
 
     def swing_height(self, swing_phase):  # 0.5까지는 들고 이후는 내려놓기
-        if swing_phase < 0.5:
-            swing_height_ = swing_phase / 0.5 * self.z_leg_lift
+        if swing_phase < 0.35:
+            swing_height_ = swing_phase / 0.35 * self.z_leg_lift
+        elif swing_phase < 0.65:
+            swing_height = self.z_leg_lift
         else:
-            swing_height_ = self.z_leg_lift * (1 - (swing_phase-0.5) / 0.5)
-        print(swing_phase, ": ", swing_height_, "\n")
+            swing_height_ = self.z_leg_lift * (1 - (swing_phase-0.65) / 0.35)
+        # print(swing_phase, ": ", swing_height_, "\n")
         return swing_height_
     
     def next_foot_location(self, swing_prop, leg_index, state, command):  # leg_index = 몇 번째 다리인
@@ -100,6 +107,7 @@ class StairSwingController(TrotSwingController):
             #[x,y,z]
             return new_position
         
+        # 여기에서 발의 x, y방향 속도 계산
         velocity = (touchdown_location - foot_location) / float(time_left) * np.array([1, 1, 0])
 
         delta_foot_location = velocity * self.time_step  # 이번 스텝에서 foot_location이 얼마나 이동할지
