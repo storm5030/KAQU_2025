@@ -37,7 +37,7 @@ class RobotManager(Node):
         self.angle_publisher = self.create_publisher(Float64MultiArray, '/legpo', 10)
 
 
-        self.timer = self.create_timer(0.02, self.main_loop)
+        self.timer = self.create_timer(0.4, self.main_loop)
         
         # 기본 로봇 파라미터 설정
         self.body = body
@@ -165,9 +165,9 @@ class RobotManager(Node):
         rpy = rotation.as_euler('xyz', degrees=False)  # false 하면 라디안
         self.state.imu_roll = rpy[0]
         self.state.imu_pitch = rpy[1]
-        self.get_logger().info(
-            f"Roll: {np.degrees(self.state.imu_roll):.2f}°, Pitch: {np.degrees(self.state.imu_pitch):.2f}°, Yaw: {np.degrees(rpy[2]):.2f}°"
-        )
+        # self.get_logger().info(
+        #     f"Roll: {np.degrees(self.state.imu_roll):.2f}°, Pitch: {np.degrees(self.state.imu_pitch):.2f}°, Yaw: {np.degrees(rpy[2]):.2f}°"
+        # )
 
     def run(self):
         """현재 활성화된 컨트롤러 실행."""
