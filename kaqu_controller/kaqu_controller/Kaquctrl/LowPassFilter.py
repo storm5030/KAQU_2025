@@ -63,5 +63,5 @@ def lpf_roll_pitch(state, lpf_r: LowPassEMA, lpf_p: LowPassEMA):
     if abs(roll_f) > np.deg2rad(90) or abs(pitch_f) > np.deg2rad(90):
         lpf_r.reset(0.0)
         lpf_p.reset(0.0)
-    print(f"Filter: Roll: {np.degrees(roll_f)}, Pitch: {np.degrees(pitch_f)}")
+    #print(f"Filter: Roll: {np.degrees(roll_f)}, Pitch: {np.degrees(pitch_f)}")
     return roll_f, pitch_f
