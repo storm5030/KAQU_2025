@@ -58,7 +58,7 @@ def generate_launch_description():
                 arguments=[
                     '-file', ramp_sdf,
                     '-name', 'ramp15',
-                    '-x', '0.0', '-y', '1.5', '-z', '0.0'
+                    '-x', '1.0', '-y', '1.5', '-z', '0.0'
                     # 필요시 Yaw 회전: '-Y', '1.5708'  # (라디안)
                 ],
                 output='screen'
@@ -76,7 +76,7 @@ def generate_launch_description():
                 arguments=[
                     '-file', stairs_sdf,
                     '-name', 'stairs3',
-                    '-x', '1.0', '-y', '0.0', '-z', '0.0', '-Y', '-1.5708'
+                    '-x', '0.0', '-y', '1.0', '-z', '0.0', '-Y', '0'
                 ],
                 output='screen'
             )
