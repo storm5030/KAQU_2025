@@ -59,6 +59,7 @@ class InverseKinematics(object):
     def get_local_positions_from_world(self,leg_positions,dx,dy,dz,roll,pitch,yaw):
         """
         Compute the positions of the end points in the shoulder frames.
+        For StairGaitController
         """
 
         leg_positions = (np.block([[leg_positions],[np.array([1,1,1,1])]])).T
@@ -105,13 +106,7 @@ class InverseKinematics(object):
             [x_RL, y_RL, z_RL]]
 
         dx, dy, dz, roll, pitch, yaw : float
-            base_link의 world 내 위치/자세 (네가 기존에 IK에 넘기는 동일 정의)
-
-        Returns
-        -------
-        np.ndarray, shape (4,3)
-            base_link_world 좌표로 변환된 각 다리 발끝 위치
-            (FR, FL, RR, RL 순서 유지)
+            base_link의 world 내 위치/자세
         """
         # base_link_world -> base_link (몸체 자세/위치)
         T_blwbl = homog_transform(dx, dy, dz, roll, pitch, yaw)
@@ -136,7 +131,13 @@ class InverseKinematics(object):
                                 leg_local_positions[i, 2], 1.0])
             p_world_h = T_list[i] @ p_leg_h
             world_positions[i, :] = p_world_h[:3]
-
+        """
+        Returns
+        -------
+        np.ndarray, shape (3,4)
+            base_link_world 좌표로 변환된 각 다리 발끝 위치
+            (FR, FL, RR, RL 순서 유지)
+        """
         return world_positions.T
 
 
