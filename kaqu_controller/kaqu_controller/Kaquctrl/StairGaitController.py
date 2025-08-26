@@ -72,6 +72,10 @@ class StairSwingController(TrotSwingController):
     def __init__(self, stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance):
         super().__init__(stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance)
 
+        self.T_lift = 0.35 # 발을 드는 시간 (총 phase 1.0 기준)
+        self.T_forward = 0.7 # 발을 전진하는 시간
+        self.T_fall = 1.0 # 발을 딛는 시간 (사용하지 않음)
+
     def raibert_touchdown_location(self, leg_index, command, swing_phase):
         # 발을 내릴 때 진행 방향으로 뻗기
         # 발이 이번 swing에서 최종적으로 도달해야 하는 위치를 리턴함. (속도 계산 X)
@@ -83,13 +87,16 @@ class StairSwingController(TrotSwingController):
 
         return np.matmul(rotation, self.default_stance[:, leg_index]) + delta_pos
 
-    def swing_height(self, swing_phase):  # 0.5까지는 들고 이후는 내려놓기
-        if swing_phase < 0.35:
-            swing_height_ = swing_phase / 0.35 * self.z_leg_lift
-        elif swing_phase < 0.65:
-            swing_height = self.z_leg_lift
+    def swing_height(self, swing_phase):  # 발 높이
+        # T_lift까지 발 들기
+        if swing_phase < self.T_lift:
+            swing_height_ = swing_phase / self.T_lift * self.z_leg_lift
+        # T_forward에는 발 진행
+        elif swing_phase < self.T_forward:
+            swing_height_ = self.z_leg_lift
+        # 이후 내려놓기
         else:
-            swing_height_ = self.z_leg_lift * (1 - (swing_phase-0.65) / 0.35)
+            swing_height_ = self.z_leg_lift * ((1 - swing_phase) / (1 - self.T_forward))
         # print(swing_phase, ": ", swing_height_, "\n")
         return swing_height_
     
@@ -100,7 +107,6 @@ class StairSwingController(TrotSwingController):
         swing_height_ = self.swing_height(swing_prop)
         touchdown_location = self.raibert_touchdown_location(leg_index, command, swing_prop)
 
-        time_left = self.time_step * self.swing_ticks * (1.0 - swing_prop)  # 남은 시간 계산
         # 마지막 틱 예외처리
         if swing_prop >= 1.0:
             new_position = touchdown_location * np.array([1, 1, 0]) + np.array([0, 0, command.robot_height])
@@ -108,7 +114,19 @@ class StairSwingController(TrotSwingController):
             return new_position
         
         # 여기에서 발의 x, y방향 속도 계산
-        velocity = (touchdown_location - foot_location) / float(time_left) * np.array([1, 1, 0])
+        back_gain = 0.0 # 발을 들 때 역방향 진행 속도 비율
+       
+        # 일단 발을 뒤로 빼지 않고, 사각형 모양으로 발 궤적을 그림 테스트
+        # 발이 걸릴 경우 뒤로 빼는 방식 고려
+        if swing_prop < self.T_lift:
+            velocity = np.array([0.0, 0.0, 0.0])
+            # time_left = self.time_step * self.swing_ticks * (1.0 - swing_prop)  # 남은 시간 계산
+            # velocity = -back_gain * (touchdown_location - foot_location) / float(time_left) * np.array([1, 1, 0])
+        elif swing_prop < self.T_forward:
+            time_left = self.time_step * self.swing_ticks * (self.T_forward - swing_prop)  # 남은 시간 계산
+            velocity = (touchdown_location - foot_location) / float(time_left) * np.array([1, 1, 0])
+        else:
+            velocity = np.array([0.0, 0.0, 0.0])
 
         delta_foot_location = velocity * self.time_step  # 이번 스텝에서 foot_location이 얼마나 이동할지
         z_vector = np.array([0, 0, swing_height_ + command.robot_height])  # 스윙 중 추가로 들어 올리기 + 로봇 몸체가 원하는 기본 높이\
