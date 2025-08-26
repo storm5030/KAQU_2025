@@ -18,6 +18,8 @@ class RobotState(object):
         self.imu_roll = 0.0  # IMU Roll
         self.imu_pitch = 0.0  # IMU Pitch
 
+        self.tau_vector = np.zeros(4) # 1_4 joint 토크값(일단 4개로 고정, 다른 관절까지 받아오려면 개수 변경)
+
         self.foot_location = np.zeros((3,4))
         self.body_local_position = np.array([0., 0., 0.])
         self.body_local_orientation = np.array([0., 0., 0.])
