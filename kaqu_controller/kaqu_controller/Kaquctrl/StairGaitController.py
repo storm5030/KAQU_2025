@@ -1,6 +1,7 @@
 from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController, TrotSwingController, TrotStanceController
 from kaqu_controller.Kaquctrl.PIDController import PID_controller
 from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
+from kaqu_controller.KaquIK.InverseKinematics import InverseKinematics
 from kaqu_controller.KaquIK.KinematicsCalculations import rotxyz, rotz
 import numpy as np
 
@@ -28,37 +29,38 @@ class StairTrotGaitController(TrotGaitController):
         self.pid_controller.reset()  # 내부 변수들 초기화
 
         # PID 보정 게인 조정 
-    def run(self, state, command):  # 외부에서 이 컨트롤러를 사용할 때 호출하는 최종 메서드: 한 틱씩 step()을 돌려 발 위치 업데이트
-        state.foot_location = self.step(state, command)
-        state.robot_height = command.robot_height  # 현재 높이를 state에 넣기
+    def run(self, state, command):
+        # 1) 기본 보행 궤적 (base_link 좌표계)
+        state.foot_location = self.step(state, command)   # shape: (3,4)
+        state.robot_height = command.robot_height
 
-        new_foot_locations = state.foot_location.copy()
-        # # imu compensation IMU 보정
-        if self.use_imu: 
-            # IMU에서 받은 기울기 (deg)
-            roll = state.imu_roll
+        new_foot_locations = state.foot_location.copy()   # (3,4)
+    
+        body = [210.0, 140.5] # 길이와 너비
+        legs = [0.0, 42.4, 101.0, 108.9] # 다리 링크 길이가 아니라 계산에 필요한 길이임
+        x_shift_front = 0 #42
+        x_shift_back = 0 #-15
+
+        self.inverse_kinematics = InverseKinematics(body, legs,x_shift_front,x_shift_back)
+
+        if self.use_imu:
+            roll  = state.imu_roll
             pitch = state.imu_pitch
-            # PID 컨트롤러를 이용해 roll/pitch 오차 보정
-            corrections = [roll, pitch]
-            # corrections = self.pid_controller.run(roll, pitch)
-            # corrections *= -1
-            for leg_index in range(4):
-                # x = new_foot_locations[0, leg_index]
-                # y = new_foot_locations[1, leg_index]
-                # z = new_foot_locations[2, leg_index]
 
-                new_z = command.robot_height*np.cos(corrections[1])*np.cos(corrections[0])
-                dz = -1*(command.robot_height-new_z)
-                new_foot_locations[2, leg_index] += dz
+            local_positions = self.inverse_kinematics.get_local_positions_from_world(new_foot_locations, dx=0, dy=0, dz=0, roll=0, pitch=0, yaw=0).T
 
-                dx = (-1*new_foot_locations[2,leg_index])*np.tan(corrections[1])
-                dy = (1*new_foot_locations[2,leg_index])*np.tan(corrections[0])
+            # 회전 보정: 몸체 기울기만큼 반대로 회전시켜 지면 평행 보행 평면 유지
+            # rotxyz(rx, ry, rz)는 (X→Y→Z) 순 회전을 가정
+            R_comp = rotxyz(-roll, -pitch, 0.0)   # 3x3
 
-                new_foot_locations[0, leg_index] += dx  
-                new_foot_locations[1, leg_index] += dy
+            # (3x3)@(3x4) = (3x4), 각 다리 열벡터에 일괄 적용
+            local_positions = (R_comp @ local_positions).T
 
-                
+            new_foot_locations = self.inverse_kinematics.get_world_positions_from_leg(local_positions, dx=0, dy=0, dz=0, roll=0, pitch=0, yaw=0)
+
+        # 최종 출력은 base_link 좌표계 유지
         return new_foot_locations
+
 
         # IMU 기반 회전 보정 적용
         
@@ -67,18 +69,14 @@ class StairSwingController(TrotSwingController):
         super().__init__(stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance)
 
     def raibert_touchdown_location(self, leg_index, command, swing_phase):
-        if swing_phase < 0.5:
-            # 발을 들 때는 제자리에서
-            return self.default_stance[:, leg_index]
-        else:
-            # 발을 내릴 때 진행 방향으로 뻗기
-            delta_pos_2d = 2 * np.array(command.velocity) * self.phase_length * self.time_step
-            delta_pos = np.array([delta_pos_2d[0], delta_pos_2d[1], 0])
+        # 발을 내릴 때 진행 방향으로 뻗기
+        delta_pos_2d = np.array(command.velocity) * self.phase_length * self.time_step
+        delta_pos = np.array([delta_pos_2d[0], delta_pos_2d[1], 0])
 
-            theta = self.stance_ticks * self.time_step * command.yaw_rate * 2
-            rotation = rotz(theta)
+        theta = self.stance_ticks * self.time_step * command.yaw_rate * 2
+        rotation = rotz(theta)
 
-            return np.matmul(rotation, self.default_stance[:, leg_index]) + delta_pos
+        return np.matmul(rotation, self.default_stance[:, leg_index]) + delta_pos
 
     def swing_height(self, swing_phase):  # 0.5까지는 들고 이후는 내려놓기
         if swing_phase < 0.5:

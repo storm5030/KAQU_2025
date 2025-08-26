@@ -45,23 +45,6 @@ class InverseKinematics(object):
         # Transformation matrix, base_link_world => RL1
         T_blwRL1 = np.dot(T_blwbl, homog_transform(-0.5*self.bodyLength+self.x_shift_back,
                           +0.5*self.bodyWidth,0,pi/2,-pi/2,0))
-        
-        # # Transformation matrix, base_link_world => FR1
-        # T_blwFR1 = np.dot(T_blwbl, homog_transform(+0.5*self.bodyLength+self.x_shift_front,
-        #                   -0.5*self.bodyWidth,0,0,0,0))
-
-        # # Transformation matrix, base_link_world => FL1
-        # T_blwFL1 = np.dot(T_blwbl, homog_transform(+0.5*self.bodyLength+self.x_shift_front,
-        #                   +0.5*self.bodyWidth,0,0,0,0))
-
-        # # Transformation matrix, base_link_world => RR1
-        # T_blwRR1 = np.dot(T_blwbl, homog_transform(-0.5*self.bodyLength+self.x_shift_back,
-        #                   -0.5*self.bodyWidth,0,0,0,0))
-
-        # # Transformation matrix, base_link_world => RL1
-        # T_blwRL1 = np.dot(T_blwbl, homog_transform(-0.5*self.bodyLength+self.x_shift_back,
-        #                   +0.5*self.bodyWidth,0,0,0,0))
-
 
         # Local coordinates
         pos_FR = np.dot(homog_transform_inverse(T_blwFR1),leg_positions[0])
@@ -71,6 +54,91 @@ class InverseKinematics(object):
 
 
         return(np.array([pos_FR[:3],pos_FL[:3],pos_RR[:3],pos_RL[:3]]))
+    
+
+    def get_local_positions_from_world(self,leg_positions,dx,dy,dz,roll,pitch,yaw):
+        """
+        Compute the positions of the end points in the shoulder frames.
+        """
+
+        leg_positions = (np.block([[leg_positions],[np.array([1,1,1,1])]])).T
+
+        # Transformation matrix, base_link_world => base_link
+        T_blwbl = homog_transform(dx,dy,dz,roll,pitch,yaw)
+
+        # Transformation matrix, base_link_world => FR1
+        T_blwFR1 = np.dot(T_blwbl, homog_transform(+0.5*self.bodyLength+self.x_shift_front,
+                          -0.5*self.bodyWidth,0,0,0,0))
+
+        # Transformation matrix, base_link_world => FL1
+        T_blwFL1 = np.dot(T_blwbl, homog_transform(+0.5*self.bodyLength+self.x_shift_front,
+                          +0.5*self.bodyWidth,0,0,0,0))
+
+        # Transformation matrix, base_link_world => RR1
+        T_blwRR1 = np.dot(T_blwbl, homog_transform(-0.5*self.bodyLength+self.x_shift_back,
+                          -0.5*self.bodyWidth,0,0,0,0))
+
+        # Transformation matrix, base_link_world => RL1
+        T_blwRL1 = np.dot(T_blwbl, homog_transform(-0.5*self.bodyLength+self.x_shift_back,
+                          +0.5*self.bodyWidth,0,0,0,0))
+
+        # Local coordinates
+        pos_FR = np.dot(homog_transform_inverse(T_blwFR1),leg_positions[0])
+        pos_FL = np.dot(homog_transform_inverse(T_blwFL1),leg_positions[1])
+        pos_RR = np.dot(homog_transform_inverse(T_blwRR1),leg_positions[2])
+        pos_RL = np.dot(homog_transform_inverse(T_blwRL1),leg_positions[3])
+
+
+        return(np.array([pos_FR[:3],pos_FL[:3],pos_RR[:3],pos_RL[:3]]))
+    
+    def get_world_positions_from_leg(self, leg_local_positions, dx, dy, dz, roll, pitch, yaw):
+        """
+        각 다리 어깨 프레임(FR, FL, RR, RL)의 로컬 좌표(leg frame)로 주어진 발끝 위치들을
+        base_link_world 좌표계로 변환한다.
+
+        Parameters
+        ----------
+        leg_local_positions : np.ndarray, shape (4,3)
+            [[x_FR, y_FR, z_FR],
+            [x_FL, y_FL, z_FL],
+            [x_RR, y_RR, z_RR],
+            [x_RL, y_RL, z_RL]]
+
+        dx, dy, dz, roll, pitch, yaw : float
+            base_link의 world 내 위치/자세 (네가 기존에 IK에 넘기는 동일 정의)
+
+        Returns
+        -------
+        np.ndarray, shape (4,3)
+            base_link_world 좌표로 변환된 각 다리 발끝 위치
+            (FR, FL, RR, RL 순서 유지)
+        """
+        # base_link_world -> base_link (몸체 자세/위치)
+        T_blwbl = homog_transform(dx, dy, dz, roll, pitch, yaw)
+
+        # base_link -> 각 다리 어깨 프레임 (네 기존 정의와 동일 회전/오프셋)
+        T_blwFR1 = np.dot(T_blwbl, homog_transform(+0.5*self.bodyLength + self.x_shift_front,
+                                                -0.5*self.bodyWidth, 0, 0, 0, 0))
+        T_blwFL1 = np.dot(T_blwbl, homog_transform(+0.5*self.bodyLength + self.x_shift_front,
+                                                +0.5*self.bodyWidth, 0, 0, 0, 0))
+        T_blwRR1 = np.dot(T_blwbl, homog_transform(-0.5*self.bodyLength + self.x_shift_back,
+                                                -0.5*self.bodyWidth, 0, 0, 0, 0))
+        T_blwRL1 = np.dot(T_blwbl, homog_transform(-0.5*self.bodyLength + self.x_shift_back,
+                                                +0.5*self.bodyWidth, 0, 0, 0, 0))
+
+        T_list = [T_blwFR1, T_blwFL1, T_blwRR1, T_blwRL1]
+
+        world_positions = np.zeros((4, 3))
+        for i in range(4):
+            # leg(local) → world : p_world = T_blwLeg * p_leg
+            p_leg_h = np.array([leg_local_positions[i, 0],
+                                leg_local_positions[i, 1],
+                                leg_local_positions[i, 2], 1.0])
+            p_world_h = T_list[i] @ p_leg_h
+            world_positions[i, :] = p_world_h[:3]
+
+        return world_positions.T
+
 
     def inverse_kinematics(self,leg_positions,dx,dy,dz,roll,pitch,yaw):
         """
