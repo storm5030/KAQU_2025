@@ -10,6 +10,7 @@ from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController
 from kaqu_controller.Kaquctrl.RestController import RestController
 from kaqu_controller.Kaquctrl.SpeedTrotController import SpeedTrotGaitController
 from kaqu_controller.Kaquctrl.StairGaitController import StairTrotGaitController
+from kaqu_controller.KaquCmdManager.TorqueSubscriber import TorqueSubscriber
 from std_msgs.msg import Float64MultiArray
 
 # class StartController:
@@ -33,6 +34,23 @@ class RobotManager(Node):
         self.imu_subscription = self.create_subscription(
             Imu, '/imu', self.imu_orientation, 10
         )
+
+        # 관절 토크 섭스크라이버
+        # 구독할 토픽 목록: 개수/이름 자유롭게 변경
+        topics = [
+            '/force_torque/fl_14',
+            '/force_torque/fr_14',
+            '/force_torque/rl_14',
+            '/force_torque/rr_14',
+        ]
+
+        # 헬퍼 주입: torque.x를 모아서 self._on_tau_vec로 전달
+        self.torque_sub = TorqueSubscriber(
+            node=self, topics=topics, on_full=self.torque_callback, axis='x', queue_size=50
+        )
+
+        # 내부 상태
+        self.tau_x = [0.0] * len(topics)
        
         self.angle_publisher = self.create_publisher(Float64MultiArray, '/legpo', 10)
 
@@ -155,8 +173,6 @@ class RobotManager(Node):
             self.current_controller.pid_controller.reset()
             self.get_logger().info("Switched to Rest Controller")
             self.command.rest_event = False
-
-
         #print(f"Behavior State: {self.state.behavior_state}, Current Controller: {self.current_controller}")
 
     def imu_orientation(self, msg):
@@ -165,9 +181,12 @@ class RobotManager(Node):
         rpy = rotation.as_euler('xyz', degrees=False)  # false 하면 라디안
         self.state.imu_roll = rpy[0]
         self.state.imu_pitch = rpy[1]
-        # self.get_logger().info(
-        #     f"Roll: {np.degrees(self.state.imu_roll):.2f}°, Pitch: {np.degrees(self.state.imu_pitch):.2f}°, Yaw: {np.degrees(rpy[2]):.2f}°"
-        # )
+
+    def torque_callback(self, tau_vec):
+        # 1) 내부 상태 갱신(권장)
+        self.tau_x = tau_vec
+        self.get_logger().debug(f'tau_x={tau_vec}')
+        self.get_logger().info(f'tau_x={tau_vec}')
 
     def run(self):
         """현재 활성화된 컨트롤러 실행."""
