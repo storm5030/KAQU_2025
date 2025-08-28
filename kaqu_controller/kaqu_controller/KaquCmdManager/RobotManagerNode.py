@@ -28,7 +28,7 @@ class RobotManager(Node):
 
         self.subscription = self.create_subscription(
             Joy, '/joy', self.joystick_callback, 10
-        )
+        )zz
 
         self.angle_publisher = self.create_publisher(Float64MultiArray, '/legpo', 10)
 
