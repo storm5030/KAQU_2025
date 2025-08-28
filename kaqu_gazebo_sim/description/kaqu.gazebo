@@ -16,28 +16,28 @@
     <gravity>true</gravity>
   </gazebo>
 
-  <gazebo reference="fl_foot">
+  <gazebo reference="fl_leg4_1">
     <mu1>3.5</mu1>
     <mu2>3.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
   </gazebo>
 
-  <gazebo reference="fr_foot">
+  <gazebo reference="fr_leg4_1">
     <mu1>3.5</mu1>
     <mu2>3.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
   </gazebo>
 
-  <gazebo reference="rl_foot">
+  <gazebo reference="rl_leg4_1">
     <mu1>3.5</mu1>
     <mu2>3.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
   </gazebo>
 
-  <gazebo reference="rr_foot">
+  <gazebo reference="rr_leg4_1">
     <mu1>3.5</mu1>
     <mu2>3.5</mu2>
     <kp>100000.0</kp>
