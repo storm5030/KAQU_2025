@@ -64,8 +64,8 @@ class StairTrotGaitController(TrotGaitController):
             new_foot_locations = self.inverse_kinematics.get_world_positions_from_leg(local_positions, dx=0, dy=0, dz=0, roll=0, pitch=0, yaw=0)
         
         # 임시 접촉 판단 확인 코드
-        print(state.tau_vec)
-        contact_states = simple_contact_state(state.tau_vec)
+        print(state.tau_vector)
+        contact_states = simple_contact_state(state.tau_vector)
         print(self.contacts(state.ticks))
         print(contact_states)
 
