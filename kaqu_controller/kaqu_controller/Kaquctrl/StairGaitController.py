@@ -95,7 +95,7 @@ class StairTrotGaitController(TrotGaitController):
         self.swingController.min_swing_lift    = self.min_swing_lift
 
         # --- FF(선행) 피치 보정 파라미터 ---
-        self.ff_pitch_deg = 10.0
+        self.ff_pitch_deg = 15.0
         self.ff_ramp_start = 0.15
         self.ff_ramp_end   = 0.90
         self.ff_height_drop = 15
@@ -315,7 +315,7 @@ class StairSwingController(TrotSwingController):
 
     # 새로 전달받는 보장값(stairs)
     min_step_length = 120  
-    min_swing_lift  = 80  
+    min_swing_lift  = 90  
 
     # === 뒷다리 전진 램프 back-off/forward profile parameters ===
     rear_backoff_dx    = -20
@@ -327,7 +327,7 @@ class StairSwingController(TrotSwingController):
     # >>> 앞다리도 코 간섭 방지 back-off/forward
     front_backoff_dx    = -20
     front_backoff_lift  = 8
-    front_backoff_start = 5
+    front_backoff_start = 0.05
     front_backoff_peak  = 0.25
     front_backoff_end   = 0.55
 
@@ -462,7 +462,7 @@ class StairSwingController(TrotSwingController):
         if swing_phase < 0.5:
             return self.default_stance[:, leg_index]
         else:
-            base_delta_2d = 2.6 * np.array([vx, vy]) * self.phase_length * self.time_step
+            base_delta_2d = 2.0 * np.array([vx, vy]) * self.phase_length * self.time_step
 
             lam_start = 0.3
             lam = (swing_phase - lam_start) / (1.0 - lam_start)
