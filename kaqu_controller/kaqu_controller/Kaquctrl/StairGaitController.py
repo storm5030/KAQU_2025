@@ -42,18 +42,18 @@ class StairTrotGaitController(TrotGaitController):
         self.max_yaw_rate = leg.stair.max_yaw_rate
 
         # --- 계단 규격 반영 (stair사용) ---
-        self.stair_tread = 0.20   # 계단 폭(앞으로 가야하는 길이)
-        self.stair_rise  = 0.03   # 계단 높이
+        self.stair_tread = 200   # 계단 폭(앞으로 가야하는 길이)
+        self.stair_rise  = 30   # 계단 높이
         # 안전 여유
-        self.step_margin = 0.02
-        self.lift_margin = 0.03
+        self.step_margin = 20
+        self.lift_margin = 30
 
         # 최소 보장값
-        self.min_step_length = max(self.stair_tread + self.step_margin, 0.20)   # 0.22 -> 주석상 0.12, 실제 값은 계단 설정에 맞춤
-        self.min_swing_lift  = 0.16   # 계단 기본 스윙 높이 여유 ↑(발 긁힘 방지)
+        self.min_step_length = self.stair_tread + self.step_margin    #실제 값은 계단 설정에 맞춤
+        self.min_swing_lift  = 16   # 계단 기본 스윙 높이 여유 ↑(발 긁힘 방지)
 
         # z 에러 게인 (기존 설계 유지)
-        z_error_constant = 0.5 * 4
+        z_error_constant = 0.5 * 2
 
         # 컨트롤러 구성
         self.swingController = StairSwingController(self.stance_ticks, self.swing_ticks, self.time_step,
@@ -79,11 +79,11 @@ class StairTrotGaitController(TrotGaitController):
         self.rear_leg_indices  = getattr(leg.stair, "rear_leg_indices",  [2, 3])
 
         # 스윙 높이 게인
-        self.front_lift_gain = getattr(leg.stair, "front_lift_gain", 1.60)
-        self.rear_lift_gain  = getattr(leg.stair, "rear_lift_gain", 2.0)
+        self.front_lift_gain = getattr(leg.stair, "front_lift_gain", 1.2)
+        self.rear_lift_gain  = getattr(leg.stair, "rear_lift_gain", 1.2)
 
         # 스윙 중 접촉 시 여유고도
-        self.extra_clearance = getattr(leg.stair, "extra_clearance", 0.08)
+        self.extra_clearance = getattr(leg.stair, "extra_clearance", 8)
 
         # SwingController에 전달 (최소 보장값 포함!)
         self.swingController.front_leg_indices = self.front_leg_indices
@@ -104,8 +104,8 @@ class StairTrotGaitController(TrotGaitController):
 
         # === (추가) 접촉 휴리스틱 파라미터 ===
         self.use_contact_heuristic = True
-        self.heuristic_z_soft = 0.15   # 바디 기준 하한(예: -20cm)
-        self.heuristic_z_margin = 0.01 # 여유 1cm
+        self.heuristic_z_soft = 15   # 바디 기준 하한(예: -20cm)
+        self.heuristic_z_margin = 10 # 여유 1cm
 
         # SwingController에도 공유
         self.swingController.use_contact_heuristic = self.use_contact_heuristic
@@ -113,8 +113,8 @@ class StairTrotGaitController(TrotGaitController):
         self.swingController.heuristic_z_margin = self.heuristic_z_margin
 
         # <<< safety: 넘어짐/랩핑 failsafe 파라미터
-        self.tip_roll_deg   = 30.0   # 이 이상 기울면 안전모드
-        self.tip_pitch_deg  = 35.0
+        self.tip_roll_deg   = 35.0   # 이 이상 기울면 안전모드
+        self.tip_pitch_deg  = 30.0
         self.hard_tip_deg   = 75.0   # 심각 기울기(전복 의심)
         self.safemode_hold_sec = 0.6
         self._safe_mode_until_tick = -1
@@ -148,8 +148,8 @@ class StairTrotGaitController(TrotGaitController):
 
     # <<< safety: 각도 유틸
     def _normalize_angles_and_units(self, roll, pitch):
-        """IMU가 도(deg)로 들어오면 rad로 변환하고 [-π, π]로 랩핑."""
-        # 단위 추정: 360° 수준이면 deg
+        """IMU가 도()로 들어오면 rad로 변환하고 [-π, π]로 랩핑."""
+        # 단위 추정: 360° 수준이면 
         if abs(roll) > 3.0 or abs(pitch) > 3.0:
             # 값이 3 rad(≈172°)를 넘으면 deg일 확률 ↑
             if abs(roll) > np.pi*2 or abs(pitch) > np.pi*2:
@@ -227,6 +227,7 @@ class StairTrotGaitController(TrotGaitController):
                         dz = -1.0 * (command.robot_height - new_z)
 
                     new_foot_locations[2, leg_index] += dz
+                    
 
                     # swing에는 더 약하게
                     xy_gain = 1.0 if is_stance else 0.2
@@ -288,7 +289,7 @@ class StairTrotGaitController(TrotGaitController):
             self._lp_roll_cmd = 0.0
             self._lp_pitch_cmd = 0.0
             # 스윙 기본값 강화
-            self.swingController._failsafe_min_swing = 0.12
+            self.swingController._failsafe_min_swing = 120
             self.swingController._failsafe_extra_clearance = 0.06
             self.swingController._failsafe_xy_scale = 0.5
         else:
@@ -310,23 +311,23 @@ class StairSwingController(TrotSwingController):
     rear_leg_indices  = [2, 3]  # RR, RL
     front_lift_gain = 1.15
     rear_lift_gain  = 1.20
-    extra_clearance = 0.03  # m
+    extra_clearance = 30  
 
     # 새로 전달받는 보장값(stairs)
-    min_step_length = 0.12  # m
-    min_swing_lift  = 0.08  # m
+    min_step_length = 120  
+    min_swing_lift  = 80  
 
     # === 뒷다리 전진 램프 back-off/forward profile parameters ===
-    rear_backoff_dx    = -0.05
-    rear_backoff_lift  = 0.020
+    rear_backoff_dx    = -50
+    rear_backoff_lift  = 20
     rear_backoff_start = 0.00
     rear_backoff_peak  = 0.30
     rear_backoff_end   = 0.65
 
     # >>> 앞다리도 코 간섭 방지 back-off/forward
-    front_backoff_dx    = -0.04
-    front_backoff_lift  = 0.008
-    front_backoff_start = 0.05
+    front_backoff_dx    = -40
+    front_backoff_lift  = 8
+    front_backoff_start = 5
     front_backoff_peak  = 0.25
     front_backoff_end   = 0.55
 
@@ -368,7 +369,7 @@ class StairSwingController(TrotSwingController):
         # (상위에서 내려오는 휴리스틱 파라미터)
         self.use_contact_heuristic = getattr(self, "use_contact_heuristic", True)
         self.heuristic_z_soft = getattr(self, "heuristic_z_soft", 0.20)
-        self.heuristic_z_margin = getattr(self, "heuristic_z_margin", 0.01)
+        self.heuristic_z_margin = getattr(self, "heuristic_z_margin", 0.02)
 
         # <<< safety: 상위 failsafe 값 전달용(없으면 None)
         self._failsafe_min_swing = None
@@ -440,7 +441,7 @@ class StairSwingController(TrotSwingController):
             s = swing_phase
             if 0.45 < s < 0.60:
                 w = 1.0 - abs((s - 0.525) / 0.075)
-                swing_h += 0.005 * w
+                swing_h += 5 * w
 
         # 적응형 z
         if leg_index in self.rear_leg_indices:
@@ -467,7 +468,7 @@ class StairSwingController(TrotSwingController):
             lam = (swing_phase - lam_start) / (1.0 - lam_start)
             lam = max(0.0, min(1.0, lam))
 
-            step_x_min = 0.20
+            step_x_min = 20
             sign = np.sign(vx) if abs(vx) > 0.03 else 0.0
 
             step_x_target = (1.0 - lam) * base_delta_2d[0] + lam * (sign * step_x_min)
