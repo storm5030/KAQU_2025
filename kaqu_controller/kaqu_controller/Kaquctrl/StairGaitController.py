@@ -42,8 +42,8 @@ class StairTrotGaitController(TrotGaitController):
         self.max_yaw_rate = leg.stair.max_yaw_rate
 
         # --- 계단 규격 반영 (stair사용) ---
-        self.stair_tread = 200   # 계단 폭(앞으로 가야하는 길이)
-        self.stair_rise  = 30   # 계단 높이
+        self.stair_tread = 100   # 계단 폭(앞으로 가야하는 길이)
+        self.stair_rise  = 50   # 계단 높이
         # 안전 여유
         self.step_margin = 20
         self.lift_margin = 30
@@ -95,16 +95,16 @@ class StairTrotGaitController(TrotGaitController):
         self.swingController.min_swing_lift    = self.min_swing_lift
 
         # --- FF(선행) 피치 보정 파라미터 ---
-        self.ff_pitch_deg = 8.0
+        self.ff_pitch_deg = 10.0
         self.ff_ramp_start = 0.15
         self.ff_ramp_end   = 0.90
-        self.ff_height_drop = 0.015
+        self.ff_height_drop = 15
         self.ff_pitch_boost_when_single_rear = 1.00
         self.ff_drop_boost_when_single_rear  = 1.00
 
         # === (추가) 접촉 휴리스틱 파라미터 ===
         self.use_contact_heuristic = True
-        self.heuristic_z_soft = 15   # 바디 기준 하한(예: -20cm)
+        self.heuristic_z_soft = 40   # 바디 기준 하한(예: -20cm)
         self.heuristic_z_margin = 10 # 여유 1cm
 
         # SwingController에도 공유
@@ -130,8 +130,8 @@ class StairTrotGaitController(TrotGaitController):
                 pass
         if getattr(self, "use_contact_heuristic", False):
             try:
-                z_soft = robot_height - float(getattr(self, "heuristic_z_soft", 0.20))
-                margin = float(getattr(self, "heuristic_z_margin", 0.01))
+                z_soft = robot_height - float(getattr(self, "heuristic_z_soft", 20))
+                margin = float(getattr(self, "heuristic_z_margin", 10))
                 foot_z = float(state.foot_location[2, leg_index])  # 바디 좌표계 z
                 return foot_z < (z_soft + margin)
             except Exception:
@@ -272,8 +272,8 @@ class StairTrotGaitController(TrotGaitController):
 
                 new_foot_locations[2, :] -= dz_drop
 
-                z_soft = command.robot_height - 0.20
-                margin = 0.010
+                z_soft = command.robot_height - 200
+                margin = 10
                 z = new_foot_locations[2, :]
                 mask = z < (z_soft + margin)
                 if np.any(mask):
@@ -318,14 +318,14 @@ class StairSwingController(TrotSwingController):
     min_swing_lift  = 80  
 
     # === 뒷다리 전진 램프 back-off/forward profile parameters ===
-    rear_backoff_dx    = -50
+    rear_backoff_dx    = -20
     rear_backoff_lift  = 20
     rear_backoff_start = 0.00
     rear_backoff_peak  = 0.30
     rear_backoff_end   = 0.65
 
     # >>> 앞다리도 코 간섭 방지 back-off/forward
-    front_backoff_dx    = -40
+    front_backoff_dx    = -20
     front_backoff_lift  = 8
     front_backoff_start = 5
     front_backoff_peak  = 0.25
@@ -350,15 +350,15 @@ class StairSwingController(TrotSwingController):
         # 적응형 z(앞/뒤)
         self._rear_extra_z = np.zeros(4, dtype=float)
         self._rear_contact_stuck = np.zeros(4, dtype=int)
-        self.rear_extra_z_gain = 0.070
-        self.rear_extra_z_max  = 0.100
+        self.rear_extra_z_gain = 10
+        self.rear_extra_z_max  = 100
         self.rear_extra_z_decay = 0.92
         self.rear_contact_stuck_thresh = 1
 
         self._front_extra_z = np.zeros(4, dtype=float)
         self._front_contact_stuck = np.zeros(4, dtype=int)
-        self.front_extra_z_gain = 0.025
-        self.front_extra_z_max  = 0.045
+        self.front_extra_z_gain = 25
+        self.front_extra_z_max  = 45
         self.front_extra_z_decay = 0.85
         self.front_contact_stuck_thresh = 2
 
@@ -368,8 +368,8 @@ class StairSwingController(TrotSwingController):
 
         # (상위에서 내려오는 휴리스틱 파라미터)
         self.use_contact_heuristic = getattr(self, "use_contact_heuristic", True)
-        self.heuristic_z_soft = getattr(self, "heuristic_z_soft", 0.20)
-        self.heuristic_z_margin = getattr(self, "heuristic_z_margin", 0.02)
+        self.heuristic_z_soft = getattr(self, "heuristic_z_soft", 200)
+        self.heuristic_z_margin = getattr(self, "heuristic_z_margin", 20)
 
         # <<< safety: 상위 failsafe 값 전달용(없으면 None)
         self._failsafe_min_swing = None
@@ -386,8 +386,8 @@ class StairSwingController(TrotSwingController):
                 pass
         if getattr(self, "use_contact_heuristic", False):
             try:
-                z_soft = robot_height - float(getattr(self, "heuristic_z_soft", 0.20))
-                margin = float(getattr(self, "heuristic_z_margin", 0.01))
+                z_soft = robot_height - float(getattr(self, "heuristic_z_soft", 200))
+                margin = float(getattr(self, "heuristic_z_margin", 10))
                 foot_z = float(state.foot_location[2, leg_index])
                 return foot_z < (z_soft + margin)
             except Exception:
@@ -441,7 +441,7 @@ class StairSwingController(TrotSwingController):
             s = swing_phase
             if 0.45 < s < 0.60:
                 w = 1.0 - abs((s - 0.525) / 0.075)
-                swing_h += 5 * w
+                swing_h += 10 * w
 
         # 적응형 z
         if leg_index in self.rear_leg_indices:
@@ -545,7 +545,7 @@ class StairSwingController(TrotSwingController):
             other_in_contact = self._get_in_contact(state, other_rear, command.robot_height)
             if not other_in_contact:
                 delta_xy *= 0.7
-                swing_h += 0.008
+                swing_h += 15
 
             # 스윙 중 접촉 기반 적응형 z
             if (0.25 < swing_prop < 0.85):
@@ -618,8 +618,8 @@ class StairSwingController(TrotSwingController):
         # 마지막 틱: 정확히 터치다운 z
         if swing_prop >= 1.0:
             new_position = touchdown_location * np.array([1.0, 1.0, 0.0]) + np.array([0.0, 0.0, command.robot_height])
-            z_soft = command.robot_height - 0.20
-            margin = 0.010
+            z_soft = command.robot_height - 200
+            margin = 10
             new_position[2] = max(new_position[2], z_soft + margin)
             return new_position
 
@@ -627,16 +627,16 @@ class StairSwingController(TrotSwingController):
 
         # LOG: z-soft-limit
         try:
-            z_min_soft = command.robot_height - 0.20
+            z_min_soft = command.robot_height - 200
             z_leg = foot_location[2] + (swing_h)
-            if z_leg < z_min_soft + 0.01:
+            if z_leg < z_min_soft + 10:
                 print(f"[Tick {int(getattr(state,'ticks',-1))}] z-soft-limit near: leg={leg_index}, z≈{z_leg:.3f}")
         except Exception:
             pass
 
         out = foot_location * np.array([1.0, 1.0, 0.0]) + z_vec + delta_xy
-        z_soft = command.robot_height - 0.20
-        out[2] = max(out[2], z_soft + 0.010)
+        z_soft = command.robot_height - 200
+        out[2] = max(out[2], z_soft + 10)
 
         # <<< safety: 안전모드면 여유고도 더 추가
         if self._failsafe_extra_clearance is not None:

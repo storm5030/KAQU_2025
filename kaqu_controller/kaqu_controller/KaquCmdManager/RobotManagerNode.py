@@ -163,10 +163,10 @@ class RobotManager(Node):
 
         # 2) ★ IMU 마운트 보정 
         #    필요하면 'x','y','z' 조합과 각도를 바꿔가며, z로 둬야 수평바닥에서 roll이 0으로 나옴
-        rot_mount = R.from_euler('z', np.pi)
+        rot_mount = R.from_euler('x', np.pi)
 
         # 3) 보정 적용
-        rotation = rot_mount * rot_raw
+        rotation = rot_raw
 
         # 4) RPY(라디안) 저장
         rpy = rotation.as_euler('xyz', degrees=False)
