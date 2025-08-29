@@ -11,6 +11,8 @@ from kaqu_controller.Kaquctrl.RestController import RestController
 from kaqu_controller.Kaquctrl.SpeedTrotController import SpeedTrotGaitController
 from kaqu_controller.Kaquctrl.StairGaitController import StairTrotGaitController
 from kaqu_controller.KaquCmdManager.TorqueSubscriber import TorqueSubscriber
+from kaqu_controller.KaquCmdManager.ContactSubscriber import ContactSubscriber
+
 from std_msgs.msg import Float64MultiArray
 
 # class StartController:
@@ -37,7 +39,7 @@ class RobotManager(Node):
 
         # 관절 토크 섭스크라이버
         # 구독할 토픽 목록: 개수/이름 자유롭게 변경
-        topics = [
+        torque_topics = [
             '/force_torque/fl_14',
             '/force_torque/fr_14',
             '/force_torque/rl_14',
@@ -46,11 +48,31 @@ class RobotManager(Node):
 
         # 헬퍼 주입: torque.x를 모아서 self._on_tau_vec로 전달
         self.torque_sub = TorqueSubscriber(
-            node=self, topics=topics, on_full=self.torque_callback, axis='x', queue_size=50
+            node=self, topics=torque_topics, on_full=self.torque_callback, axis='x', queue_size=50
         )
 
         # 내부 상태
-        self.tau_x = [0.0] * len(topics)
+        self.tau_x = [0.0] * len(torque_topics)
+
+        # 접촉 센서 섭스크라이버
+        contact_topics = [
+            '/contact/fl',
+            '/contact/fr',
+            '/contact/rl',
+            '/contact/rr',
+        ]
+
+        # 헬퍼 주입: torque.x를 모아서 self._on_tau_vec로 전달
+        self.contact_sub = ContactSubscriber(
+            node=self,
+            topics=contact_topics,
+            on_full=self.contact_callback,
+            sensor_hz=200.0,
+            timeout_factor=1.5,
+            emit_hz=200.0,
+            depth=50
+        )
+       
        
         self.angle_publisher = self.create_publisher(Float64MultiArray, '/legpo', 10)
 
@@ -183,11 +205,15 @@ class RobotManager(Node):
         self.state.imu_pitch = rpy[1]
 
     def torque_callback(self, tau_vec):
-        # 1) 내부 상태 갱신(권장)
-        self.tau_x = tau_vec
+        #self.tau_x = tau_vec
         self.state.tau_vec = tau_vec
         # self.get_logger().debug(f'tau_x={tau_vec}')
         # self.get_logger().info(f'tau_x={self.state.tau_vec}')
+
+    def contact_callback(self, contact_flags ):
+        #self.contact_flags = contact_flags
+        self.state.contact_flags = contact_flags
+        #self.get_logger().info(f'{self.state.contact_flags}')
 
     def run(self):
         """현재 활성화된 컨트롤러 실행."""

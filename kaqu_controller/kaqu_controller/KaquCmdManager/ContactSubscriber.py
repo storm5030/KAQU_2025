@@ -1,58 +1,65 @@
-# torque_array_subscriber.py
 #!/usr/bin/env python3
-from typing import Callable, List, Optional
-from geometry_msgs.msg import Wrench
+import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.qos import qos_profile_sensor_data, QoSProfile
+from ros_gz_interfaces.msg import Contacts
 
 class ContactSubscriber:
     """
-    여러 개의 Contact 토픽을 받아 접촉 여부를 전달하는 헬퍼.
-    - topics: 구독할 토픽 이름 리스트
-    - on_full: 모든 토픽의 최신 샘플을 한 번씩 받은 시점에 호출되는 콜백 (List[float] 인자)
-    - queue_size: ROS2 subscription 큐 크기 (기본 50)
+    여러 Contacts 토픽을 구독해 '접촉 여부(True/False)' 배열을 주기적으로 콜백으로 넘김.
+    - 복잡한 채터링 억제/필터링 없음.
+    - 희소 발행 대비 타임아웃만 적용.
     """
-    def __init__(self,
-                 node: Node,
-                 topics: List[str],
-                 on_full: Callable[[List[float]], None],
-                 queue_size: int = 50):
+    def __init__(self, node: Node, topics, on_full,
+                 sensor_hz: float = 200.0,
+                 timeout_factor: float = 2.5,
+                 emit_hz: float = 200.0,
+                 depth: int = 50):
         self._node = node
         self._on_full = on_full
-
         self._N = len(topics)
-        self._tau = [0.0] * self._N
-        self._valid = [False] * self._N
-        self._subs = []
+
+        self._last_flag = [False] * self._N
+        self._last_rx   = [node.get_clock().now()] * self._N
+
         self._cb_group = ReentrantCallbackGroup()
+        base = qos_profile_sensor_data
+        self._qos = QoSProfile(
+            reliability=base.reliability,
+            durability=base.durability,
+            history=base.history,
+            depth=depth
+        )
+
+        self._period_ns  = int(1e9 / sensor_hz)
+        self._timeout_ns = int(self._period_ns * timeout_factor)
+        self._emit_sec   = 1.0 / emit_hz
 
         for i, t in enumerate(topics):
-            sub = node.create_subscription(
-                Contact, t,
+            node.create_subscription(
+                Contacts, t,
                 lambda msg, idx=i: self._cb(msg, idx),
-                queue_size,
+                self._qos,
                 callback_group=self._cb_group
             )
-            self._subs.append(sub)
-            # node.get_logger().info(f'[TorqueArraySubscriber] Sub {i}: {t}')
 
-    def _cb(self, msg: Wrench, idx: int):
-        # getattr로 torque.x / torque.y / torque.z 선택
-        val = getattr(msg.torque, self._axis, 0.0)
-        self._tau[idx] = float(val)
-        self._valid[idx] = True
+        self._timer = node.create_timer(
+            self._emit_sec, self._emit,
+            callback_group=self._cb_group
+        )
 
-        if all(self._valid):
-            # 콜백에 복사본 전달 (외부에서 안전하게 사용)
-            self._on_full(list(self._tau))
-            # 다음 배치를 기다리도록 리셋
-            self._valid = [False] * self._N
+    def _cb(self, msg: Contacts, idx: int):
+        self._last_flag[idx] = (len(msg.contacts) > 0)
+        self._last_rx[idx]   = self._node.get_clock().now()
 
-    # 선택적 편의 함수들 (원하면 사용)
-    def latest_vector(self) -> List[float]:
-        """가장 최근에 수신한 토크 벡터(부분 수신 포함)."""
-        return list(self._tau)
-
-    def get(self, i: int) -> float:
-        """i번째 최신 토크."""
-        return float(self._tau[i])
+    def _emit(self):
+        now = self._node.get_clock().now()
+        out = []
+        for i in range(self._N):
+            elapsed = (now - self._last_rx[i]).nanoseconds
+            if elapsed > self._timeout_ns:
+                out.append(False)
+            else:
+                out.append(self._last_flag[i])
+        self._on_full(out)
