@@ -40,10 +40,10 @@ class RobotManager(Node):
         # 관절 토크 섭스크라이버
         # 구독할 토픽 목록: 개수/이름 자유롭게 변경
         torque_topics = [
-            '/force_torque/fl_14',
             '/force_torque/fr_14',
-            '/force_torque/rl_14',
+            '/force_torque/fl_14',
             '/force_torque/rr_14',
+            '/force_torque/rl_14',
         ]
 
         # 헬퍼 주입: torque.x를 모아서 self._on_tau_vec로 전달
@@ -56,10 +56,10 @@ class RobotManager(Node):
 
         # 접촉 센서 섭스크라이버
         contact_topics = [
-            '/contact/fl',
             '/contact/fr',
-            '/contact/rl',
+            '/contact/fl',
             '/contact/rr',
+            '/contact/rl',
         ]
 
         # 헬퍼 주입: torque.x를 모아서 self._on_tau_vec로 전달
@@ -67,9 +67,9 @@ class RobotManager(Node):
             node=self,
             topics=contact_topics,
             on_full=self.contact_callback,
-            sensor_hz=200.0,
-            timeout_factor=1.5,
-            emit_hz=200.0,
+            sensor_hz=500.0,
+            timeout_factor=1.0,
+            emit_hz=500.0,
             depth=50
         )
        
@@ -203,10 +203,11 @@ class RobotManager(Node):
         rpy = rotation.as_euler('xyz', degrees=False)  # false 하면 라디안
         self.state.imu_roll = rpy[0]
         self.state.imu_pitch = rpy[1]
+        print(msg.linear_acceleration.z)
 
     def torque_callback(self, tau_vec):
         #self.tau_x = tau_vec
-        self.state.tau_vec = tau_vec
+        self.state.tau_vector = tau_vec
         # self.get_logger().debug(f'tau_x={tau_vec}')
         # self.get_logger().info(f'tau_x={self.state.tau_vec}')
 

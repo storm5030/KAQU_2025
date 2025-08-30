@@ -4,7 +4,8 @@
     <!-- CONFIGURE JOINTS OF THE ROBOT -->
     <ros2_control name="GazeboSimSystem" type="System">
         <hardware>
-            <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+            <plugin>ign_ros2_control/IgnitionSystem</plugin>
+            <param name="provide_feedback">true</param> 
         </hardware>
 
         <joint name="fr_mainbodyhip_joint">

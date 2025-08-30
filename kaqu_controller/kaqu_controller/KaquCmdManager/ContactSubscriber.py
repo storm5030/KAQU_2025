@@ -12,9 +12,9 @@ class ContactSubscriber:
     - 희소 발행 대비 타임아웃만 적용.
     """
     def __init__(self, node: Node, topics, on_full,
-                 sensor_hz: float = 200.0,
-                 timeout_factor: float = 2.5,
-                 emit_hz: float = 200.0,
+                 sensor_hz: float = 500.0,
+                 timeout_factor: float = 1.5,
+                 emit_hz: float = 500.0,
                  depth: int = 50):
         self._node = node
         self._on_full = on_full
