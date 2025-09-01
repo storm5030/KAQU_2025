@@ -30,6 +30,10 @@ class RobotManager(Node):
             Joy, '/joy', self.joystick_callback, 10
         )
 
+        self.nav_command_subscription = self.create_subscription(
+            Float64MultiArray, '/nav_command', self.nav_command_callback, 10
+        )
+
         self.angle_publisher = self.create_publisher(Float64MultiArray, '/legpo', 10)
 
         # 기본 로봇 파라미터 설정
