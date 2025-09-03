@@ -140,9 +140,9 @@ class CircularStick(tk.Canvas):
 
 def add_hover_effect(button, key):
     def on_enter(e):
-        button.config(bg=PALETTE["abxy_hover"][key], fg=PALETTE["abxy_hover_fg"])
+        button.config(bg=PALETTE["abxy_hover"][key], foreground=PALETTE["abxy_hover_fg"])
     def on_leave(e):
-        button.config(bg=PALETTE["abxy"][key], fg="white")
+        button.config(bg=PALETTE["abxy"][key], foreground="white")
     button.bind("<Enter>", on_enter)
     button.bind("<Leave>", on_leave)
 
