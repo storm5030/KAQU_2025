@@ -70,8 +70,8 @@ class StairTrotGaitController(TrotGaitController):
         # print(contact_states)
         # print()
         # 콘택트 센서 출력
-        # print(self.contacts(state.ticks))
-        # print(state.contact_flags)
+        print(self.contacts(state.ticks))
+        print(state.contact_flags)
 
         # 최종 출력은 base_link 좌표계 유지
         return new_foot_locations

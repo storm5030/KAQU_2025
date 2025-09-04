@@ -23,6 +23,17 @@
     <mu2>1.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
+    <contact>
+      <!-- 엔진별 지원항목이 다르지만 아래 조합이 대체로 잘 먹음 -->
+      <ode>
+        <kp>5e6</kp>         <!-- 관통시 복원 강성 (너무 크면 튀어요) -->
+        <kd>1.0</kd>         <!-- 접촉 감쇠 -->
+        <min_depth>0.01</min_depth> <!-- 허용 관통: 작은 deadzone 효과 -->
+        <max_vel>0.05</max_vel>       <!-- 해석기 안정화에 도움 -->
+        <soft_cfm>1e-6</soft_cfm>
+        <soft_erp>0.2</soft_erp>
+      </ode>
+    </contact>
   </gazebo>
 
   <gazebo reference="fr_leg4_1">
@@ -31,6 +42,17 @@
     <mu2>1.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
+    <contact>
+      <!-- 엔진별 지원항목이 다르지만 아래 조합이 대체로 잘 먹음 -->
+      <ode>
+        <kp>5e6</kp>         <!-- 관통시 복원 강성 (너무 크면 튀어요) -->
+        <kd>1.0</kd>         <!-- 접촉 감쇠 -->
+        <min_depth>0.01</min_depth> <!-- 허용 관통: 작은 deadzone 효과 -->
+        <max_vel>0.05</max_vel>       <!-- 해석기 안정화에 도움 -->
+        <soft_cfm>1e-6</soft_cfm>
+        <soft_erp>0.2</soft_erp>
+      </ode>
+    </contact>
   </gazebo>
 
   <gazebo reference="rl_leg4_1">
@@ -39,6 +61,17 @@
     <mu2>1.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
+    <contact>
+      <!-- 엔진별 지원항목이 다르지만 아래 조합이 대체로 잘 먹음 -->
+      <ode>
+        <kp>5e6</kp>         <!-- 관통시 복원 강성 (너무 크면 튀어요) -->
+        <kd>1.0</kd>         <!-- 접촉 감쇠 -->
+        <min_depth>0.01</min_depth> <!-- 허용 관통: 작은 deadzone 효과 -->
+        <max_vel>0.05</max_vel>       <!-- 해석기 안정화에 도움 -->
+        <soft_cfm>1e-6</soft_cfm>
+        <soft_erp>0.2</soft_erp>
+      </ode>
+    </contact>
   </gazebo>
 
   <gazebo reference="rr_leg4_1">
@@ -47,6 +80,17 @@
     <mu2>1.5</mu2>
     <kp>100000.0</kp>
     <kd>1.0</kd>
+    <contact>
+      <!-- 엔진별 지원항목이 다르지만 아래 조합이 대체로 잘 먹음 -->
+      <ode>
+        <kp>5e6</kp>         <!-- 관통시 복원 강성 (너무 크면 튀어요) -->
+        <kd>1.0</kd>         <!-- 접촉 감쇠 -->
+        <min_depth>0.01</min_depth> <!-- 허용 관통: 작은 deadzone 효과 -->
+        <max_vel>0.05</max_vel>       <!-- 해석기 안정화에 도움 -->
+        <soft_cfm>1e-6</soft_cfm>
+        <soft_erp>0.2</soft_erp>
+      </ode>
+    </contact>
   </gazebo>
 
 </robot>
