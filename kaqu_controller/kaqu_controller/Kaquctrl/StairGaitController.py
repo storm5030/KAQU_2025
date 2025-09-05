@@ -49,7 +49,7 @@ class StairTrotGaitController(TrotGaitController):
         self.lift_margin = 30
 
         # 최소 보장값
-        self.min_step_length = self.stair_tread + self.step_margin    #실제 값은 계단 설정에 맞춤
+        self.min_step_length = self.stair_tread + self.step_margin  #실제 값은 계단 설정에 맞춤
         self.min_swing_lift  = 16   # 계단 기본 스윙 높이 여유 ↑(발 긁힘 방지)
 
         # z 에러 게인 (기존 설계 유지)
@@ -104,7 +104,7 @@ class StairTrotGaitController(TrotGaitController):
 
         # === (추가) 접촉 휴리스틱 파라미터 ===
         self.use_contact_heuristic = True
-        self.heuristic_z_soft = 40   # 바디 기준 하한(예: -20cm)
+        self.heuristic_z_soft = 200   # 바디 기준 하한(예: -20cm)
         self.heuristic_z_margin = 10 # 여유 1cm
 
         # SwingController에도 공유
@@ -115,7 +115,7 @@ class StairTrotGaitController(TrotGaitController):
         # <<< safety: 넘어짐/랩핑 failsafe 파라미터
         self.tip_roll_deg   = 35.0   # 이 이상 기울면 안전모드
         self.tip_pitch_deg  = 30.0
-        self.hard_tip_deg   = 75.0   # 심각 기울기(전복 의심)
+        self.hard_tip_deg   = 55.0   # 심각 기울기(전복 의심)
         self.safemode_hold_sec = 0.6
         self._safe_mode_until_tick = -1
 
