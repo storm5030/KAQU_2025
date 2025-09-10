@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'PathPublisher = kaqu_nav.kaqu_nav.PathPublisher:main',
+            'follow_path_server = kaqu_nav.follow_path_server:main',
+            'follow_path_client = kaqu_nav.follow_path_client:main',
         ],
     },
 )

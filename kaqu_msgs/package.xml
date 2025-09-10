@@ -3,7 +3,7 @@
 <package format="3">
   <name>kaqu_msgs</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Interfaces for kaqu project</description>
   <maintainer email="choish0107@daum.net">Hajun Choi</maintainer>
   <license>TODO: License declaration</license>
 
