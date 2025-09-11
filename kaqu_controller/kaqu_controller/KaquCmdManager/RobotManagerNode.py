@@ -203,7 +203,6 @@ class RobotManager(Node):
         rpy = rotation.as_euler('xyz', degrees=False)  # false 하면 라디안
         self.state.imu_roll = rpy[0]
         self.state.imu_pitch = rpy[1]
-        print(msg.linear_acceleration.z)
 
     def torque_callback(self, tau_vec):
         #self.tau_x = tau_vec
