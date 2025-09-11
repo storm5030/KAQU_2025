@@ -55,14 +55,14 @@ class StairTrotGaitController(TrotGaitController):
         self.pid_controller = PID_controller(0.12, 0.30, 0.01)  # (kp, ki, kd) 단순 3항
         self.pid_controller.reset()
 
-        self.imu_follow_gain = 0.05          # PID 결과에 곱하는 추종 게인
+        self.imu_follow_gain = 0.08          # PID 결과에 곱하는 추종 게인
         self.imu_max_corr    = 0.08          # 소프트클립 최대치(라디안 수준의 작은 값)
-        self.imu_lpf_alpha   = 0.4           # LPF alpha (0~1, 클수록 느림)
+        self.imu_lpf_alpha   = 0.3           # LPF alpha (0~1, 클수록 느림)
         self._lp_roll_cmd    = 0.0
         self._lp_pitch_cmd   = 0.0
 
         # 🔥 추가: FF 전방 숙임 파라미터
-        self.ff_pitch_deg = 12.0   # 목표 전방 숙임 (deg)
+        self.ff_pitch_deg = 10.0   # 목표 전방 숙임 (deg)
         self.ff_gain = 1.0         # 크기 스케일
         self.ff_start = 0.2        # swing phase 시작점
         self.ff_end   = 0.9        # swing phase 끝점
@@ -111,6 +111,9 @@ class StairTrotGaitController(TrotGaitController):
             # IMU raw (단위는 rad 기준 가정. deg가 들어오면 상위에서 변환 필요)
             roll = float(getattr(state, "imu_roll", 0.0))
             pitch = float(getattr(state, "imu_pitch", 0.0))
+
+            if state.ticks % 10 == 0: # 10틱(0.2초)마다 한 번씩 출력
+                print(f"[DEBUG IMU] Roll: {np.degrees(roll):.2f} deg, Pitch: {np.degrees(pitch):.2f} deg")
 
             # PID 결과(작은 수치), 과도한 튐 방지: 소프트클립
             roll_corr, pitch_corr = self.pid_controller.run(roll, pitch)
@@ -186,7 +189,7 @@ class StairSwingController(TrotSwingController):
 
         # 2) 반주기 시간(s) * 속도 = 변위(m)
         dt_half = max(self.phase_length * self.time_step, 1e-6)  # s
-        delta_m = np.array([vx, vy]) * dt_half                   # [m, m]
+        delta_m = np.array([vx, vy]) * dt_half                   
 
         # 3) default_stance의 단위 감지 (간단 휴리스틱)
         #   - 보통 m이면 수 cm~수십 cm = 0.x 수준, mm면 수십~수백 = 10~300 수준
@@ -200,7 +203,7 @@ class StairSwingController(TrotSwingController):
 
         # 5) 과보폭 방지(클램프): IK가 비도달 되지 않도록 1틱 보폭 상한
         #    값은 mm 기준으로 주고, m 좌표면 그대로 비례(= scale=1)
-        max_step_xy = getattr(self, "max_raibert_step_xy", 80.0 if use_mm else 0.08)  # 80mm or 0.08m
+        max_step_xy = getattr(self, "max_raibert_step_xy", 20.0 if use_mm else 0.08)  # 80mm or 0.08m
         dxy = delta[:2]
         n = float(np.linalg.norm(dxy))
         if n > max_step_xy:
