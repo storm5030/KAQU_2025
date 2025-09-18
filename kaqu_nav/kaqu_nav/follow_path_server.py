@@ -195,7 +195,7 @@ class FollowPathServer(Node):
                 filtered.append(s)
         return filtered
 
-    def _run_for_duration(self, goal_handle, step_index, duration_s, lin_sign, yaw_sign) -> bool:
+    def _run_for_duration(self, goal_handle, step_index, duration_s, lin_sign, yaw_sign, target_yaw_deg=None) -> bool:
         hz = max(self.pub_hz, 1)
         dt = 1.0 / hz
         start = self.get_clock().now()
@@ -206,35 +206,56 @@ class FollowPathServer(Node):
         joy.axes = [0.0] * max(axes_len, 8)
         joy.buttons = [0] * 12
 
-        v = float(lin_sign) * float(self.x_vel)            # m/s
-        r_deg = float(yaw_sign) * float(self.yaw_rate_deg_s)  # deg/s
+        v = float(lin_sign) * float(self.x_vel)                   # m/s
+        r_deg_ff = float(yaw_sign) * float(self.yaw_rate_deg_s)   # feedforward yaw rate for pure turn
+        yaw_rate_max = max(1e-6, float(self.yaw_rate_deg_s))      # deg/s
+
+        # 헤딩 유지용 상태 초기화(전진 스텝일 때만)
+        if target_yaw_deg is not None:
+            self._iyaw = 0.0
+            self._prev_err = 0.0
 
         while self.get_clock().now() < end:
             if goal_handle.is_cancel_requested:
                 return False
 
-            # Joy publish
-            joy.axes[self.idx_lin] = float(lin_sign)
-            joy.axes[self.idx_yaw] = float(yaw_sign)
-            self.joy_pub.publish(joy)
-
-            # --- 여기부터 수정 ---
-            if self.use_imu_pose and self.imu_est.ready:
-                # IMU 추정이 준비되면 IMU 값을 신뢰해 사용
+            # --- 자세 업데이트 (IMU 사용 시 IMU 값으로 덮어씀) ---
+            if hasattr(self, 'use_imu_pose') and self.use_imu_pose and getattr(self, 'imu_est', None) and self.imu_est.ready:
                 self.x_m, self.y_m, self.yaw_deg = self.imu_est.get_pose()
             else:
-                # 기존 dead-reckoning (IMU 준비 전 또는 use_imu_pose=False 일 때만)
+                # dead-reckoning 적분
                 yaw_rad = math.radians(self.yaw_deg)
                 self.x_m += v * dt * math.cos(yaw_rad)
                 self.y_m += v * dt * math.sin(yaw_rad)
-                self.yaw_deg += r_deg * dt
-                if self.yaw_deg > 180.0:
-                    self.yaw_deg -= 360.0
-                if self.yaw_deg < -180.0:
-                    self.yaw_deg += 360.0
-            # --- 수정 끝 ---
+                self.yaw_deg += r_deg_ff * dt
+                if self.yaw_deg > 180.0: self.yaw_deg -= 360.0
+                if self.yaw_deg < -180.0: self.yaw_deg += 360.0
 
-            # Feedback
+            # --- 조이스틱 축 계산 ---
+            # 전진 스텝이면 헤딩 유지, 회전 스텝이면 기존대로 yaw_sign 사용
+            if target_yaw_deg is not None and self.use_heading_hold:
+                # P(+[I,D] 옵션) 제어로 yaw rate 명령 생성
+                err = self._angle_diff_deg(target_yaw_deg, float(self.yaw_deg))  # [deg]
+                self._iyaw += err * dt
+                dyaw = (err - self._prev_err) / dt if dt > 0 else 0.0
+                self._prev_err = err
+
+                yaw_rate_cmd = self.kp_yaw * err + self.ki_yaw * self._iyaw + self.kd_yaw * dyaw  # [deg/s]
+                # 조이스틱 축 [-1..1] 로 스케일
+                yaw_axis = max(-1.0, min(1.0, yaw_rate_cmd / yaw_rate_max))
+            else:
+                # pure turn (또는 헤딩 홀드 OFF)
+                yaw_axis = float(yaw_sign)
+
+            # 전진/후진 축은 그대로
+            lin_axis = float(lin_sign)
+
+            # 퍼블리시
+            joy.axes[self.idx_lin] = lin_axis
+            joy.axes[self.idx_yaw] = yaw_axis
+            self.joy_pub.publish(joy)
+
+            # 피드백
             remaining = (end - self.get_clock().now()).nanoseconds * 1e-9
             elapsed = (self.get_clock().now() - self.start_time).nanoseconds * 1e-9
             fb = FollowPath.Feedback()
@@ -249,6 +270,7 @@ class FollowPathServer(Node):
             time.sleep(dt)
 
         return True
+
 
     def _stop_joy(self):
         axes_len = max(self.idx_lin, self.idx_yaw) + 1
