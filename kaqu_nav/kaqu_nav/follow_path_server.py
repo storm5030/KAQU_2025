@@ -14,11 +14,13 @@ from rclpy.time import Time
 
 from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
 
-from sensor_msgs.msg import Joy
+from sensor_msgs.msg import Joy, Imu
 from std_srvs.srv import Trigger
 
 # 생성된 액션 인터페이스
 from kaqu_msgs.action import FollowPath
+
+from kaqu_nav.pose_estimator import ImuPose2D, PoseEstimatorConfig
 
 
 class FollowPathServer(Node):
@@ -57,6 +59,16 @@ class FollowPathServer(Node):
         self.y_m = 0.0
         self.yaw_deg = 0.0
         self.start_time: Time = None
+        
+        self.use_imu_pose = True  # IMU 추정 사용 스위치 (False면 기존 dead-reckoning 사용)
+        cfg = PoseEstimatorConfig(
+            calib_samples=200,
+            accel_includes_gravity=False,  # 보통 linear_acceleration은 중력 제거돼 옴
+            vel_leak_rate=0.02,
+            prefer_quat_yaw=True
+        )
+        self.imu_est = ImuPose2D(cfg)
+        self.create_subscription(Imu, '/imu', self._on_imu, 100)  # 토픽 이름은 실제에 맞게 조정
 
         # 액션 서버
         self._action_server = ActionServer(
@@ -93,7 +105,8 @@ class FollowPathServer(Node):
         # 시작 시각/자세 리셋
         self.start_time = self.get_clock().now()
         self.x_m, self.y_m, self.yaw_deg = 0.0, 0.0, 0.0
-
+        if self.use_imu_pose:
+            self.imu_est.reset()
         # Goal 파싱
         try:
             steps = self._parse_route_json(goal_handle.request.route_json)
@@ -164,6 +177,11 @@ class FollowPathServer(Node):
         )
     # ----- 유틸 -----
 
+    # 클래스 메서드로 추가
+    def _on_imu(self, msg: Imu):
+        self.imu_est.update(msg)
+    
+
     def _parse_route_json(self, route_json: str) -> List[Dict[str, Any]]:
         steps = json.loads(route_json)
         if not isinstance(steps, list):
@@ -200,17 +218,23 @@ class FollowPathServer(Node):
             joy.axes[self.idx_yaw] = float(yaw_sign)
             self.joy_pub.publish(joy)
 
-            # 상태 적분
-            yaw_rad = math.radians(self.yaw_deg)
-            self.x_m += v * dt * math.cos(yaw_rad)
-            self.y_m += v * dt * math.sin(yaw_rad)
-            self.yaw_deg += r_deg * dt
-            if self.yaw_deg > 180.0:
-                self.yaw_deg -= 360.0
-            if self.yaw_deg < -180.0:
-                self.yaw_deg += 360.0
+            # --- 여기부터 수정 ---
+            if self.use_imu_pose and self.imu_est.ready:
+                # IMU 추정이 준비되면 IMU 값을 신뢰해 사용
+                self.x_m, self.y_m, self.yaw_deg = self.imu_est.get_pose()
+            else:
+                # 기존 dead-reckoning (IMU 준비 전 또는 use_imu_pose=False 일 때만)
+                yaw_rad = math.radians(self.yaw_deg)
+                self.x_m += v * dt * math.cos(yaw_rad)
+                self.y_m += v * dt * math.sin(yaw_rad)
+                self.yaw_deg += r_deg * dt
+                if self.yaw_deg > 180.0:
+                    self.yaw_deg -= 360.0
+                if self.yaw_deg < -180.0:
+                    self.yaw_deg += 360.0
+            # --- 수정 끝 ---
 
-            # 피드백
+            # Feedback
             remaining = (end - self.get_clock().now()).nanoseconds * 1e-9
             elapsed = (self.get_clock().now() - self.start_time).nanoseconds * 1e-9
             fb = FollowPath.Feedback()
@@ -222,7 +246,6 @@ class FollowPathServer(Node):
             fb.yaw_deg = float(self.yaw_deg)
             goal_handle.publish_feedback(fb)
 
-            # 동기 슬립
             time.sleep(dt)
 
         return True
