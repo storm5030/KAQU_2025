@@ -18,12 +18,13 @@ setup(
     description='TODO: Package description',
     license='Apache-2.0',
     tests_require=['pytest'],
-    entry_points={
+    eentry_points={
         'console_scripts': [
             'RobotManagerNode = kaqu_controller.KaquCmdManager.RobotManagerNode:main',
             'AnglePulbisherNode = kaqu_controller.KaquCmdManager.AnglePublisher:main',
-            'debug = kaqu_controller.KaquCmdManager.test:main'
-            
+            'debug = kaqu_controller.KaquCmdManager.test:main',
+            # 아래 한 줄을 새로 추가합니다.
+            'ArduinoBridgeNode = kaqu_controller.KaquCmdManager.arduino_bridge_node:main',
         ],
     },
 )
