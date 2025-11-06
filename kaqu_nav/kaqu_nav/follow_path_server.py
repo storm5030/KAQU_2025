@@ -47,7 +47,7 @@ class FollowPathServer(Node):
         trot = leg_params.gait 
 
         # 전진 속도 [m/s] (양수)
-        self.x_vel = trot.max_x_vel * 0.001 # mm/s -> m/s 변환
+        self.x_vel = trot.max_x_vel * 4 * 0.001 # mm/s -> m/s 변환
         # yaw 속도 [deg/s] (양수)
         self.yaw_rate_deg_s = np.degrees(trot.max_yaw_rate)
         self.turn_fast_window_deg = 12.0
@@ -190,49 +190,57 @@ class FollowPathServer(Node):
     # --------------- 스텝 러너 --------------- #
 
     def _run_forward(self, goal_handle, step_index: int,
-                     distance_m: float, lin_sign: float,
-                     x0: float, y0: float) -> bool:
-        """IMU 기준 전진: 유클리드 거리로 종료 판정 + 전역 헤딩 유지(P)."""
+                 distance_m: float, lin_sign: float,
+                 x0: float, y0: float) -> bool:
+        """
+        전진: 헤딩 P제어는 유지하고, 종결은 '거리/속도'로 얻은 시간(duration)만큼 동작.
+        - 속도: self.x_vel [m/s]
+        - 전진 축 크기: self.lin_axis_mag (조이스틱 스케일)
+        """
+        # 이동에 필요한 시간 계산 (안전 가드 포함)
+        v = max(1e-6, float(self.x_vel))                  # [m/s]
+        duration_s = abs(float(distance_m)) / v           # [s]
         t0 = time.time()
+        t_end = t0 + duration_s
+
         joy = self._make_joy_msg()
 
         while True:
             if goal_handle.is_cancel_requested:
+                self._stop_joy()
                 return False
 
+            now = time.time()
+            if now >= t_end:
+                # 목표 시간 도달 → 정지 및 성공
+                self._stop_joy()
+                return True
+
+            # IMU로 현재 자세
             x, y, yaw_deg = self.imu_est.get_pose()
 
-            # 진행도: 유클리드 거리(방향성은 lin_sign로 보정)
-            dist_now = math.hypot(x - x0, y - y0)
-            done = dist_now >= (distance_m - self.dist_tol)
-
-            # 전역 헤딩 목표로 P 제어(전진에서 잔오차 지속 보정)
+            # 헤딩 P 제어 (전진 중 yaw 보정)
             err = self._angle_diff_deg(self.yaw_target_deg, yaw_deg)
             yaw_rate_cmd = self.kp_yaw * err                    # [deg/s]
             yaw_axis = max(-1.0, min(1.0, yaw_rate_cmd / max(1e-6, self.yaw_rate_deg_s)))
             if self.min_yaw_axis > 0.0 and abs(yaw_axis) > 1e-3 and abs(yaw_axis) < self.min_yaw_axis:
                 yaw_axis = math.copysign(self.min_yaw_axis, yaw_axis)
 
-            # 전/후진 축
-            joy.axes[self.idx_lin] = self.lin_axis_mag * lin_sign
-            joy.axes[self.idx_yaw] = yaw_axis
+            # 전/후진 축: 조이스틱 스케일 파라미터 사용(속도는 duration에만 반영)
+            joy.axes[self.idx_lin] = float(self.lin_axis_mag) * float(lin_sign)
+            joy.axes[self.idx_yaw] = float(yaw_axis)
             self.joy_pub.publish(joy)
 
-            # 피드백
+            # 피드백 (남은 시간 기반)
             fb = FollowPath.Feedback()
             fb.current_index = step_index
-            fb.elapsed_time_s = time.time() - t0
-            fb.remaining_time_s = 0.0
+            fb.elapsed_time_s = float(now - t0)
+            fb.remaining_time_s = max(0.0, float(t_end - now))
             fb.x_m = float(x); fb.y_m = float(y); fb.yaw_deg = float(yaw_deg)
             goal_handle.publish_feedback(fb)
 
-            if done:
-                return True
-            if (time.time() - t0) > self.max_step_time_s:
-                self.get_logger().warn('Forward step timeout.')
-                return False
-
             time.sleep(self.dt)
+
 
     def _run_turn(self, goal_handle, step_index: int) -> bool:
         """
