@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # ROS 2 Humble / Python3.10+
+"""
+IMU 전용 FollowPath 액션 서버(개선판)
+핵심 개선:
+ 1) 전진 스텝의 진행도 = 유클리드 거리(hypot)로 측정 → 가속도 드리프트의 투영 오류 완화
+ 2) 회전 스텝 = 2단계 제어(빠르게 돌다가 근접 구간에서만 P제어) → 초반부터 충분히 빠르고, 마지막만 정밀
+ 3) 전역 헤딩 목표(yaw_target_deg)로 관리 → 턴 잔오차는 다음 전진 스텝의 헤딩-홀드로 자연 보정
+ 4) 턴 동안 ZUPT 적용(속도=0 가정) → 드리프트 축적 완화
+"""
+
 import json
 import time
 import math
 from typing import List, Dict, Any
 
 import rclpy
-import numpy as np
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
-from rclpy.duration import Duration
-from rclpy.time import Time
-
-from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 
 from sensor_msgs.msg import Joy, Imu
-from std_srvs.srv import Trigger
-
-# 생성된 액션 인터페이스
 from kaqu_msgs.action import FollowPath
 
 from kaqu_nav.pose_estimator import ImuPose2D, PoseEstimatorConfig
@@ -27,62 +30,67 @@ class FollowPathServer(Node):
     def __init__(self):
         super().__init__('follow_path_server')
 
-        leg_params = LegParameters()     
-        trot = leg_params.gait           #KaquParams의 Trot 관련 변수들      
-
-        # ===== 파라미터 (kaquParams 성격) =====
-        # 전진 속도 [m/s] (양수)
-        self.x_vel = trot.max_x_vel * 0.001 # mm/s -> m/s 변환
-        # yaw 속도 [deg/s] (양수)
-        self.yaw_rate_deg_s = np.degrees(trot.max_yaw_rate)
-
-        # Joy 퍼블리시 주기 [Hz]
-        ts = float(trot.time_step)  # 예: 0.02 s
-        self.pub_hz = int(round(1.0 / ts)) if ts > 0.0 else 50
-        
-        # Joy 토픽명
+        # [필수 IO] 조이스틱 퍼블리셔
         self.joy_topic = '/joy'
-
-        # Joy 축 인덱스 (컨트롤러 매핑에 맞춰 조정)
         self.idx_lin = 4
         self.idx_yaw = 6
-
-        # (선택) LLM 서비스 콜 사용 여부/네임
-        self.use_llm_notify_service = False
-        self.llm_srv_name = '/llm/notify_goal_done'
-
         self.joy_pub = self.create_publisher(Joy, self.joy_topic, 10)
-        self.llm_cli = self.create_client(Trigger, self.llm_srv_name) if self.use_llm_notify_service else None
 
-        # 내부 상태 (기준점은 서버 실행 시)
-        self.x_m = 0.0
-        self.y_m = 0.0
-        self.yaw_deg = 0.0
-        self.start_time: Time = None
-        
-        self.use_imu_pose = True  # IMU 추정 사용 스위치 (False면 기존 dead-reckoning 사용)
+        # [제어 주기]
+        self.pub_hz = 50
+        self.dt = 1.0 / self.pub_hz
+
+        # [조이스틱 스케일]
+        self.yaw_rate_deg_s = 30.0  # 최대 회전 속도 스케일(컨트롤러에 맞게 조정)
+
+        # 회전 제어 파라미터 (개선)
+        self.yaw_rate_deg_s = 30.0
+        self.turn_fast_window_deg = 12.0
+        self.turn_fast_axis = 0.8     # 빠른 구간 속도
+        self.turn_slow_axis = 0.4     # 근접 구간(절반 속도 고정) ★비례제어 제거
+        self.yaw_tol_deg = 3.0
+
+        # 전진 헤딩 P
+        self.kp_yaw = 0.10
+        self.min_yaw_axis = 0.10
+
+        # 전진 종료
+        self.dist_tol = 0.03
+        self.lin_axis_mag = 1.0
+        self.max_step_time_s = 60
+
+        # [IMU + QoS]
         cfg = PoseEstimatorConfig(
-            calib_samples=200,
-            accel_includes_gravity=False,  # 보통 linear_acceleration은 중력 제거돼 옴
-            vel_leak_rate=0.02,
-            prefer_quat_yaw=True
+            calib_samples=100,
+            prefer_quat_yaw=True,
+            accel_has_gravity=True  # 가제보 IMU가 중력 포함이면 True로 바꾸세요
         )
         self.imu_est = ImuPose2D(cfg)
-        self.create_subscription(Imu, '/imu', self._on_imu, 100)  # 토픽 이름은 실제에 맞게 조정
+        sensor_qos = QoSProfile(
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=50
+        )
+        self.create_subscription(Imu, '/imu', self._on_imu, sensor_qos)
+
+        # [전역 헤딩 목표] — 모든 스텝에서 동일한 기준으로 보정
+        self.yaw_target_deg = None
 
         # 액션 서버
         self._action_server = ActionServer(
-            self,
-            FollowPath,
-            'follow_path',
+            self, FollowPath, 'follow_path',
             execute_callback=self.execute_cb,
             goal_callback=self.goal_cb,
             cancel_callback=self.cancel_cb
         )
 
-        self.get_logger().info(f'FollowPathServer is up. pub_hz={self.pub_hz}Hz, x_vel={self.x_vel:.3f}m/s, yaw_rate={self.yaw_rate_deg_s:.1f}deg/s')
+        # (디버그) IMU 수신률 지표
+        self._imu_rx = 0
+        self.create_timer(1.0, self._imu_watchdog)
 
-    # ----- 액션 콜백 -----
+        self.get_logger().info('FollowPathServer (IMU-only, improved) started.')
+
+    # ----------------- 액션 콜백 ----------------- #
 
     def goal_cb(self, goal_request: FollowPath.Goal) -> GoalResponse:
         try:
@@ -90,23 +98,28 @@ class FollowPathServer(Node):
         except Exception as e:
             self.get_logger().warn(f'Invalid route_json: {e}')
             return GoalResponse.REJECT
-        if not steps:
-            self.get_logger().warn('Empty steps.')
-            return GoalResponse.REJECT
-        return GoalResponse.ACCEPT
+        return GoalResponse.ACCEPT if steps else GoalResponse.REJECT
 
     def cancel_cb(self, goal_handle) -> CancelResponse:
         self.get_logger().info('Cancel requested.')
         return CancelResponse.ACCEPT
 
     def execute_cb(self, goal_handle):
-        self.get_logger().info('Executing new route...')
+        self._stop_joy()
+        self.imu_est.reset()
 
-        # 시작 시각/자세 리셋
-        self.start_time = self.get_clock().now()
-        self.x_m, self.y_m, self.yaw_deg = 0.0, 0.0, 0.0
-        if self.use_imu_pose:
-            self.imu_est.reset()
+        # IMU 준비 대기(간단)
+        if not self._wait_imu_ready(timeout_s=3.0):
+            msg = 'IMU not ready.'
+            self.get_logger().error(msg)
+            goal_handle.abort()
+            return FollowPath.Result(success=False, message=msg,
+                                     total_time_s=0.0, final_x_m=0.0, final_y_m=0.0, final_yaw_deg=0.0)
+
+        # 전역 헤딩 목표 초기화(현재 IMU yaw)
+        _, _, yaw0 = self.imu_est.get_pose()
+        self.yaw_target_deg = float(yaw0)
+
         # Goal 파싱
         try:
             steps = self._parse_route_json(goal_handle.request.route_json)
@@ -114,176 +127,216 @@ class FollowPathServer(Node):
             msg = f'route_json parse failed: {e}'
             self.get_logger().error(msg)
             goal_handle.abort()
-            return FollowPath.Result(
-                success=False, message=msg, total_time_s=0.0,
-                final_x_m=float(self.x_m), final_y_m=float(self.y_m), final_yaw_deg=float(self.yaw_deg)
-            )
+            x, y, yaw = self.imu_est.get_pose()
+            return FollowPath.Result(success=False, message=msg,
+                                     total_time_s=0.0, final_x_m=x, final_y_m=y, final_yaw_deg=yaw)
 
+        t_start = time.time()
         success = True
-        total_time = 0.0
 
         for i, step in enumerate(steps):
             if goal_handle.is_cancel_requested:
                 self._stop_joy()
+                x, y, yaw = self.imu_est.get_pose()
                 goal_handle.canceled()
-                elapsed = (self.get_clock().now() - self.start_time).nanoseconds * 1e-9
-                return FollowPath.Result(
-                    success=False, message='Canceled by client',
-                    total_time_s=float(total_time),
-                    final_x_m=float(self.x_m), final_y_m=float(self.y_m), final_yaw_deg=float(self.yaw_deg)
-                )
+                return FollowPath.Result(success=False, message='Canceled by client',
+                                         total_time_s=time.time()-t_start, final_x_m=x, final_y_m=y, final_yaw_deg=yaw)
 
             if 'forward_m' in step:
-                distance = float(step['forward_m'])
-                duration_s = abs(distance) / max(self.x_vel, 1e-6)
-                lin, yaw = (1.0 if distance >= 0.0 else -1.0), 0.0
-                action_name = f'forward {distance:.3f} m'
+                dist = float(step['forward_m'])
+                lin_sign = 1.0 if dist >= 0.0 else -1.0
+                self.get_logger().info(f'[{i}/{len(steps)-1}] forward {dist:.3f} m')
+
+                # 기준점 저장
+                x0, y0, _ = self.imu_est.get_pose()
+
+                ok = self._run_forward(goal_handle, i,
+                                       distance_m=abs(dist), lin_sign=lin_sign,
+                                       x0=x0, y0=y0)
+                if not ok:
+                    success = False
+                    break
+
             elif 'turn_deg' in step:
-                angle = float(step['turn_deg'])
-                duration_s = abs(angle) / max(self.yaw_rate_deg_s, 1e-6)
-                lin, yaw = 0.0, (1.0 if angle >= 0.0 else -1.0)
-                action_name = f'turn {angle:.1f} deg'
+                ang = float(step['turn_deg'])
+                self.get_logger().info(f'[{i}/{len(steps)-1}] turn {ang:.1f} deg')
+
+                # 전역 목표 헤딩 갱신만 수행(즉시 정확히 맞출 필요 없음 — 연이어 전진에서 보정)
+                self.yaw_target_deg = self._wrap_deg(self.yaw_target_deg + ang)
+
+                ok = self._run_turn(goal_handle, i)  # 2단계 제어로 "거의" 맞춘다
+                if not ok:
+                    success = False
+                    break
+
             else:
-                self.get_logger().warn(f'Step {i} has no forward_m / turn_deg. Skipped.')
-                continue
-
-            self.get_logger().info(f'[{i}/{len(steps)-1}] {action_name} for {duration_s:.2f}s')
-
-            # 동기 실행
-            step_ok = self._run_for_duration(goal_handle, i, duration_s, lin, yaw)
-            total_time += duration_s
-            if not step_ok:
-                success = False
-                break
+                self.get_logger().warn(f'Step {i} has no forward_m/turn_deg. Skip.')
 
         self._stop_joy()
-
-        if success and self.use_llm_notify_service and self.llm_cli is not None:
-            # 선택: 비동기 서비스 콜 대신 try/except로 블로킹 call로 바꾸거나, 그냥 생략 가능
-            pass
-
-        elapsed = (self.get_clock().now() - self.start_time).nanoseconds * 1e-9
+        x, y, yaw = self.imu_est.get_pose()
         msg = 'Route completed.' if success else 'Route aborted.'
-        self.get_logger().info(f'{msg} (elapsed {elapsed:.2f}s)')
+        if success: goal_handle.succeed()
+        else:       goal_handle.abort()
 
-        if success:
-            goal_handle.succeed()
-        else:
-            goal_handle.abort()
+        return FollowPath.Result(success=success, message=msg,
+                                 total_time_s=time.time()-t_start,
+                                 final_x_m=x, final_y_m=y, final_yaw_deg=yaw)
 
-        return FollowPath.Result(
-            success=success, message=msg, total_time_s=float(total_time),
-            final_x_m=float(self.x_m), final_y_m=float(self.y_m), final_yaw_deg=float(self.yaw_deg)
-        )
-    # ----- 유틸 -----
+    # --------------- 스텝 러너 --------------- #
 
-    # 클래스 메서드로 추가
+    def _run_forward(self, goal_handle, step_index: int,
+                     distance_m: float, lin_sign: float,
+                     x0: float, y0: float) -> bool:
+        """IMU 기준 전진: 유클리드 거리로 종료 판정 + 전역 헤딩 유지(P)."""
+        t0 = time.time()
+        joy = self._make_joy_msg()
+
+        while True:
+            if goal_handle.is_cancel_requested:
+                return False
+
+            x, y, yaw_deg = self.imu_est.get_pose()
+
+            # 진행도: 유클리드 거리(방향성은 lin_sign로 보정)
+            dist_now = math.hypot(x - x0, y - y0)
+            done = dist_now >= (distance_m - self.dist_tol)
+
+            # 전역 헤딩 목표로 P 제어(전진에서 잔오차 지속 보정)
+            err = self._angle_diff_deg(self.yaw_target_deg, yaw_deg)
+            yaw_rate_cmd = self.kp_yaw * err                    # [deg/s]
+            yaw_axis = max(-1.0, min(1.0, yaw_rate_cmd / max(1e-6, self.yaw_rate_deg_s)))
+            if self.min_yaw_axis > 0.0 and abs(yaw_axis) > 1e-3 and abs(yaw_axis) < self.min_yaw_axis:
+                yaw_axis = math.copysign(self.min_yaw_axis, yaw_axis)
+
+            # 전/후진 축
+            joy.axes[self.idx_lin] = self.lin_axis_mag * lin_sign
+            joy.axes[self.idx_yaw] = yaw_axis
+            self.joy_pub.publish(joy)
+
+            # 피드백
+            fb = FollowPath.Feedback()
+            fb.current_index = step_index
+            fb.elapsed_time_s = time.time() - t0
+            fb.remaining_time_s = 0.0
+            fb.x_m = float(x); fb.y_m = float(y); fb.yaw_deg = float(yaw_deg)
+            goal_handle.publish_feedback(fb)
+
+            if done:
+                return True
+            if (time.time() - t0) > self.max_step_time_s:
+                self.get_logger().warn('Forward step timeout.')
+                return False
+
+            time.sleep(self.dt)
+
+    def _run_turn(self, goal_handle, step_index: int) -> bool:
+        """
+        2단계 회전(고정 속도만 사용):
+          - |err| > fast_window: turn_fast_axis로 회전
+          - fast_window >= |err| > yaw_tol_deg: turn_slow_axis(절반 속도)로 회전
+          - |err| <= yaw_tol_deg: 정지 후 종료 (잔오차는 전진에서 보정)
+        턴 중 ZUPT로 드리프트 완화.
+        """
+        t0 = time.time()
+        joy = self._make_joy_msg()
+
+        while True:
+            if goal_handle.is_cancel_requested:
+                return False
+
+            x, y, yaw_deg = self.imu_est.get_pose()
+            err = self._angle_diff_deg(self.yaw_target_deg, yaw_deg)
+
+            # ZUPT
+            self.imu_est.vx = 0.0
+            self.imu_est.vy = 0.0
+
+            ae = abs(err)
+            if ae <= self.yaw_tol_deg:
+                self._stop_joy()
+                return True
+            elif ae <= self.turn_fast_window_deg:
+                yaw_axis = self.turn_slow_axis * (1.0 if err > 0 else -1.0)  # ★ 절반 고정 속도
+            else:
+                yaw_axis = self.turn_fast_axis * (1.0 if err > 0 else -1.0)  # 빠른 고정 속도
+
+            joy.axes[self.idx_lin] = 0.0
+            joy.axes[self.idx_yaw] = yaw_axis
+            self.joy_pub.publish(joy)
+
+            fb = FollowPath.Feedback()
+            fb.current_index = step_index
+            fb.elapsed_time_s = time.time() - t0
+            fb.remaining_time_s = 0.0
+            fb.x_m = float(x); fb.y_m = float(y); fb.yaw_deg = float(yaw_deg)
+            goal_handle.publish_feedback(fb)
+
+            if (time.time() - t0) > self.max_step_time_s:
+                self.get_logger().warn('Turn step timeout.')
+                return False
+
+            time.sleep(self.dt)
+
+    # ----------------- 유틸 ----------------- #
+
     def _on_imu(self, msg: Imu):
+        self._imu_rx += 1
         self.imu_est.update(msg)
-    
+
+    def _imu_watchdog(self):
+        self.get_logger().info(f'IMU rx ~ {self._imu_rx} msgs/s')
+        self._imu_rx = 0
+
+    def _wait_imu_ready(self, timeout_s: float) -> bool:
+        t0 = time.time()
+        while not self.imu_est.ready and (time.time() - t0) < timeout_s:
+            time.sleep(0.01)
+        return self.imu_est.ready
 
     def _parse_route_json(self, route_json: str) -> List[Dict[str, Any]]:
         steps = json.loads(route_json)
         if not isinstance(steps, list):
             raise ValueError('route_json must be a list.')
-        filtered = []
+        out: List[Dict[str, Any]] = []
         for s in steps:
-            if not isinstance(s, dict):
-                continue
-            # forward_m XOR turn_deg
-            if ('forward_m' in s) ^ ('turn_deg' in s):
-                filtered.append(s)
-        return filtered
+            if isinstance(s, dict) and (('forward_m' in s) ^ ('turn_deg' in s)):
+                out.append(s)
+        return out
 
-    def _run_for_duration(self, goal_handle, step_index, duration_s, lin_sign, yaw_sign, target_yaw_deg=None) -> bool:
-        hz = max(self.pub_hz, 1)
-        dt = 1.0 / hz
-        start = self.get_clock().now()
-        end = start + Duration(seconds=duration_s)
-
+    def _make_joy_msg(self) -> Joy:
         axes_len = max(self.idx_lin, self.idx_yaw) + 1
         joy = Joy()
         joy.axes = [0.0] * max(axes_len, 8)
         joy.buttons = [0] * 12
-
-        v = float(lin_sign) * float(self.x_vel)                   # m/s
-        r_deg_ff = float(yaw_sign) * float(self.yaw_rate_deg_s)   # feedforward yaw rate for pure turn
-        yaw_rate_max = max(1e-6, float(self.yaw_rate_deg_s))      # deg/s
-
-        # 헤딩 유지용 상태 초기화(전진 스텝일 때만)
-        if target_yaw_deg is not None:
-            self._iyaw = 0.0
-            self._prev_err = 0.0
-
-        while self.get_clock().now() < end:
-            if goal_handle.is_cancel_requested:
-                return False
-
-            # --- 자세 업데이트 (IMU 사용 시 IMU 값으로 덮어씀) ---
-            if hasattr(self, 'use_imu_pose') and self.use_imu_pose and getattr(self, 'imu_est', None) and self.imu_est.ready:
-                self.x_m, self.y_m, self.yaw_deg = self.imu_est.get_pose()
-            else:
-                # dead-reckoning 적분
-                yaw_rad = math.radians(self.yaw_deg)
-                self.x_m += v * dt * math.cos(yaw_rad)
-                self.y_m += v * dt * math.sin(yaw_rad)
-                self.yaw_deg += r_deg_ff * dt
-                if self.yaw_deg > 180.0: self.yaw_deg -= 360.0
-                if self.yaw_deg < -180.0: self.yaw_deg += 360.0
-
-            # --- 조이스틱 축 계산 ---
-            # 전진 스텝이면 헤딩 유지, 회전 스텝이면 기존대로 yaw_sign 사용
-            if target_yaw_deg is not None and self.use_heading_hold:
-                # P(+[I,D] 옵션) 제어로 yaw rate 명령 생성
-                err = self._angle_diff_deg(target_yaw_deg, float(self.yaw_deg))  # [deg]
-                self._iyaw += err * dt
-                dyaw = (err - self._prev_err) / dt if dt > 0 else 0.0
-                self._prev_err = err
-
-                yaw_rate_cmd = self.kp_yaw * err + self.ki_yaw * self._iyaw + self.kd_yaw * dyaw  # [deg/s]
-                # 조이스틱 축 [-1..1] 로 스케일
-                yaw_axis = max(-1.0, min(1.0, yaw_rate_cmd / yaw_rate_max))
-            else:
-                # pure turn (또는 헤딩 홀드 OFF)
-                yaw_axis = float(yaw_sign)
-
-            # 전진/후진 축은 그대로
-            lin_axis = float(lin_sign)
-
-            # 퍼블리시
-            joy.axes[self.idx_lin] = lin_axis
-            joy.axes[self.idx_yaw] = yaw_axis
-            self.joy_pub.publish(joy)
-
-            # 피드백
-            remaining = (end - self.get_clock().now()).nanoseconds * 1e-9
-            elapsed = (self.get_clock().now() - self.start_time).nanoseconds * 1e-9
-            fb = FollowPath.Feedback()
-            fb.current_index = step_index
-            fb.remaining_time_s = max(0.0, float(remaining))
-            fb.elapsed_time_s = float(elapsed)
-            fb.x_m = float(self.x_m)
-            fb.y_m = float(self.y_m)
-            fb.yaw_deg = float(self.yaw_deg)
-            goal_handle.publish_feedback(fb)
-
-            time.sleep(dt)
-
-        return True
-
+        return joy
 
     def _stop_joy(self):
-        axes_len = max(self.idx_lin, self.idx_yaw) + 1
-        joy = Joy()
-        joy.axes = [0.0] * max(axes_len, 8)
-        joy.buttons = [0] * 12
-        self.joy_pub.publish(joy)
+        self.joy_pub.publish(self._make_joy_msg())
+
+    @staticmethod
+    def _wrap_deg(a: float) -> float:
+        if a > 180.0: a -= 360.0
+        if a < -180.0: a += 360.0
+        return a
+
+    @staticmethod
+    def _angle_diff_deg(target: float, source: float) -> float:
+        diff = target - source
+        if diff > 180.0: diff -= 360.0
+        if diff < -180.0: diff += 360.0
+        return diff
+
+
+# 맨 위에 추가
+from rclpy.executors import MultiThreadedExecutor
 
 def main():
     rclpy.init()
     node = FollowPathServer()
+    executor = MultiThreadedExecutor()     # ★ 멀티스레드 실행기
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
