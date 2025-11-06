@@ -14,6 +14,7 @@ import json
 import time
 import math
 from typing import List, Dict, Any
+import numpy as np
 
 import rclpy
 from rclpy.node import Node
@@ -25,6 +26,7 @@ from kaqu_msgs.action import FollowPath
 
 from kaqu_nav.pose_estimator import ImuPose2D, PoseEstimatorConfig
 
+from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
 
 class FollowPathServer(Node):
     def __init__(self):
@@ -40,11 +42,14 @@ class FollowPathServer(Node):
         self.pub_hz = 50
         self.dt = 1.0 / self.pub_hz
 
-        # [조이스틱 스케일]
-        self.yaw_rate_deg_s = 30.0  # 최대 회전 속도 스케일(컨트롤러에 맞게 조정)
 
-        # 회전 제어 파라미터 (개선)
-        self.yaw_rate_deg_s = 30.0
+        leg_params = LegParameters()     
+        trot = leg_params.gait 
+
+        # 전진 속도 [m/s] (양수)
+        self.x_vel = trot.max_x_vel * 0.001 # mm/s -> m/s 변환
+        # yaw 속도 [deg/s] (양수)
+        self.yaw_rate_deg_s = np.degrees(trot.max_yaw_rate)
         self.turn_fast_window_deg = 12.0
         self.turn_fast_axis = 0.8     # 빠른 구간 속도
         self.turn_slow_axis = 0.4     # 근접 구간(절반 속도 고정) ★비례제어 제거
