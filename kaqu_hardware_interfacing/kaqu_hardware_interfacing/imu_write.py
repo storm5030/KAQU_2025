@@ -169,6 +169,8 @@ class Mpu6050ImuNode(Node):
         pitch_rad = math.radians(self.pitch_deg)
         yaw_rad   = math.radians(self.yaw_deg)
 
+        print(roll_rad, pitch_rad, yaw_rad)
+
         # orientation: quaternion
         qx, qy, qz, qw = euler_to_quaternion(roll_rad, pitch_rad, yaw_rad)
         msg.orientation.x = qx
