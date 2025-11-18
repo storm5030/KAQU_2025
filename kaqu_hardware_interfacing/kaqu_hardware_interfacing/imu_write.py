@@ -169,7 +169,7 @@ class Mpu6050ImuNode(Node):
         pitch_rad = math.radians(self.pitch_deg)
         yaw_rad   = math.radians(self.yaw_deg)
 
-        print(roll_rad, pitch_rad, yaw_rad)
+        #print(roll_rad, pitch_rad, yaw_rad)
 
         # orientation: quaternion
         qx, qy, qz, qw = euler_to_quaternion(roll_rad, pitch_rad, yaw_rad)
@@ -177,6 +177,8 @@ class Mpu6050ImuNode(Node):
         msg.orientation.y = qy
         msg.orientation.z = qz
         msg.orientation.w = qw
+
+        print(qx,qy,qz,qw)
 
         # angular_velocity: [rad/s] (자이로 원본 사용)
         msg.angular_velocity.x = math.radians(gx)
