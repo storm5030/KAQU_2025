@@ -25,6 +25,7 @@ find_package(geometry_msgs REQUIRED)
 
 rosidl_generate_interfaces(kaqu_msgs
   "msg/JoyCtrlCmds.msg"
+  "action/FollowPath.action"
   DEPENDENCIES builtin_interfaces geometry_msgs
 )
 

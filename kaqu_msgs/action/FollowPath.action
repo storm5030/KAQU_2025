@@ -1,0 +1,20 @@
+# Goal
+string route_json          # 예: [{"forward_m": 2.0}, {"turn_deg": 90}, {"forward_m": 1.0}]
+
+---
+# Result
+bool success
+string message
+float32 total_time_s
+float32 final_x_m
+float32 final_y_m
+float32 final_yaw_deg
+
+---
+# Feedback
+uint32 current_index       # 현재 수행 중인 스텝 인덱스 (0-based)
+float32 remaining_time_s   # 해당 스텝의 남은 시간 (sec)
+float32 elapsed_time_s
+float32 x_m
+float32 y_m
+float32 yaw_deg
