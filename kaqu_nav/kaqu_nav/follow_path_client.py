@@ -45,9 +45,9 @@ def main():
     rclpy.init()
     node = FollowPathClient()
     steps = [
-        {"forward_m": 0.5},
+        {"forward_m": -1.0},
         {"turn_deg": 90},
-        {"forward_m": 0.5},
+        {"forward_m": -0.5},
         {"turn_deg": -90}
     ]
     future = node.send(steps)

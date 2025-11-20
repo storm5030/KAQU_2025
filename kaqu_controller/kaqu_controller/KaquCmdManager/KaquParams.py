@@ -62,7 +62,7 @@ class LegParameters(object):
             self.time_step = 0.02 #0.09
             self.max_x_vel = 30 # 30
             self.max_y_vel = 10
-            self.max_yaw_rate = 0.3
+            self.max_yaw_rate = 0.5
             self.z_leg_lift = 40 #20
     
     class Physical_Params():
