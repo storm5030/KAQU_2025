@@ -50,10 +50,19 @@ def generate_launch_description():
     output='screen'
     )
 
+    imu_node = Node(
+        package='kaqu_hardware_interfacing',
+        executable='imu_write',
+        name='ImuNode',
+    output='screen'
+    )
+
+
     return LaunchDescription([
         # gazebo_launch,
         controller_node1,
         controller_node2,
         input_launch,
-        hardware_node
+        hardware_node,
+        imu_node
     ])
