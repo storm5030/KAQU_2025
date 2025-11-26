@@ -127,12 +127,22 @@ class RobotManager(Node):
 
         print(f"Behavior State: {self.state.behavior_state}, Current Controller: {self.current_controller}")
 
-    def imu_orientation(self, msg):
-        quaternion = [msg.axes[0], msg.axes[1], msg.axes[7], 1]
-        rotation = R.from_quat(quaternion)
-        rpy = rotation.as_euler('xyz', degrees=True)  # false 하면 라디안
-        self.state.imu_roll = rpy[0]
-        self.state.imu_pitch = rpy[1]
+    def imu_orientation(self, msg: Imu):
+            # ROS 쿼터니언 순서: x, y, z, w
+            quaternion = [
+                msg.orientation.x,
+                msg.orientation.y,
+                msg.orientation.z,
+                msg.orientation.w
+            ]
+
+            rotation = R.from_quat(quaternion)
+            rpy = rotation.as_euler('xyz', degrees=False)  # True면 °, False면 rad
+
+            self.state.imu_roll = rpy[0]
+            self.state.imu_pitch = rpy[1]
+            print(rpy[0], rpy[1])
+            # self.state.imu_yaw = rpy[2]
 
     def run(self):
         """현재 활성화된 컨트롤러 실행."""
