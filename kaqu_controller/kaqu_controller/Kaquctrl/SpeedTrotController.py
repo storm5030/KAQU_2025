@@ -1,5 +1,3 @@
-# 임시 경사로 등반 코드 
-
 import rclpy
 import numpy as np
 from geometry_msgs.msg import Twist, TwistStamped
@@ -9,7 +7,7 @@ from kaqu_controller.Kaquctrl.PIDController import PID_controller
 from kaqu_controller.KaquIK.KinematicsCalculations import rotxyz, rotz
 from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
 
-class TrotGaitController(GaitController):
+class SpeedGaitController(GaitController):
     def __init__(self, default_stance, stance_time, swing_time, time_step, use_imu):
         #  77.5  77.5  -77.5 -77.5
         #-91.45 91.45 -91.45 91.45
@@ -43,10 +41,10 @@ class TrotGaitController(GaitController):
         self.max_y_vel = leg.gait.max_y_vel #10
         self.max_yaw_rate = leg.gait.max_yaw_rate #0.1
  
-        self.swingController = TrotSwingController(self.stance_ticks, self.swing_ticks, self.time_step,
+        self.swingController = SpeedSwingController(self.stance_ticks, self.swing_ticks, self.time_step,
                                                     self.phase_length, z_leg_lift, self.default_stance)
 
-        self.stanceController = TrotStanceController(self.phase_length, self.stance_ticks, self.swing_ticks,
+        self.stanceController = SpeedStanceController(self.phase_length, self.stance_ticks, self.swing_ticks,
                                                       self.time_step, z_error_constant)
 
     # 선속도와 각속도를 스케일링
@@ -120,7 +118,7 @@ class TrotGaitController(GaitController):
         return new_foot_locations
 
 # swing인 발의 위치 계산
-class TrotSwingController(object):
+class SpeedSwingController(object):
     def __init__(self, stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance):
         self.stance_ticks = stance_ticks
         self.swing_ticks = swing_ticks
@@ -170,7 +168,7 @@ class TrotSwingController(object):
         z_vector = np.array([0, 0, swing_height_ + command.robot_height])  # 스윙 중 추가로 들어 올리기 + 로봇 몸체가 원하는 기본 높이\
         return foot_location * np.array([1, 1, 0]) + z_vector + delta_foot_location
 
-class TrotStanceController(object):
+class SpeedStanceController(object):
     def __init__(self, phase_length, stance_ticks, swing_ticks, time_step, z_error_constant):
         self.phase_length = phase_length
         self.stance_ticks = stance_ticks
