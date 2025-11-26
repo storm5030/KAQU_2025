@@ -10,6 +10,9 @@ IMU 전용 FollowPath 액션 서버(개선판)
  4) 턴 동안 ZUPT 적용(속도=0 가정) → 드리프트 축적 완화
 """
 
+
+# 헤딩을 반대로 하기 위해서, execute_cb 내부의 lin_sign 및 ang 에 -1 곱함
+
 import json
 import time
 import math
@@ -158,14 +161,14 @@ class FollowPathServer(Node):
                 x0, y0, _ = self.imu_est.get_pose()
 
                 ok = self._run_forward(goal_handle, i,
-                                       distance_m=abs(dist), lin_sign=lin_sign,
+                                       distance_m=abs(dist), lin_sign= -1* lin_sign, # 헤딩 반대 -1 곱합
                                        x0=x0, y0=y0)
                 if not ok:
                     success = False
                     break
 
             elif 'turn_deg' in step:
-                ang = float(step['turn_deg'])
+                ang = -1 * float(step['turn_deg']) # 헤딩 반대 -1 곱함
                 self.get_logger().info(f'[{i}/{len(steps)-1}] turn {ang:.1f} deg')
 
                 # 전역 목표 헤딩 갱신만 수행(즉시 정확히 맞출 필요 없음 — 연이어 전진에서 보정)
