@@ -98,8 +98,10 @@ class SpeedTrotGaitController(GaitController):
             roll = -state.imu_roll
             pitch = state.imu_pitch
             # PID 컨트롤러를 이용해 roll/pitch 오차 보정
-            corrections = self.pid_controller.run(roll, pitch)
-            corrections *= -1
+            # corrections = self.pid_controller.run(roll, pitch)
+            # corrections *= -1
+            corrections = [roll, pitch]
+           
             for leg_index in range(4):
                 x = new_foot_locations[0, leg_index]
                 y = new_foot_locations[1, leg_index]
