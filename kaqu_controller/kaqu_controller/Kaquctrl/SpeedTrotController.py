@@ -99,24 +99,25 @@ class SpeedTrotGaitController(GaitController):
             pitch = state.imu_pitch
             # PID 컨트롤러를 이용해 roll/pitch 오차 보정
             corrections = self.pid_controller.run(roll, pitch)
+            corrections *= -1
             for leg_index in range(4):
                 x = new_foot_locations[0, leg_index]
                 y = new_foot_locations[1, leg_index]
+                z = new_foot_locations[2, leg_index]
 
-                # pitch에 의한 z 보정 (x 위치 기준)
-                dz_pitch = x * np.tan(corrections[1])
-
-                # roll에 의한 z 보정 (y 위치 기준)
-                dz_roll = -y * np.tan(corrections[0])
-
-                # 최종 보정값
-                dz = dz_pitch + dz_roll
-                
-                # z 좌표에만 보정 적용
+                new_z = command.robot_height*np.cos(corrections[1])*np.cos(corrections[0])
+                dz = -1*(command.robot_height-new_z)
                 new_foot_locations[2, leg_index] += dz
 
-        return new_foot_locations
+                dx = (-1*new_foot_locations[2,leg_index])*np.tan(corrections[1])
+                dy = (1*new_foot_locations[2,leg_index])*np.tan(corrections[0])
 
+                new_foot_locations[0, leg_index] += dx  
+                new_foot_locations[1, leg_index] += dy
+                
+                
+        return new_foot_locations
+    
 # swing인 발의 위치 계산
 class SpeedSwingController(object):
     def __init__(self, stance_ticks, swing_ticks, time_step, phase_length, z_leg_lift, default_stance):

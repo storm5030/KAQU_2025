@@ -72,7 +72,6 @@ class QuadrupedControllerNode(Node):
         roll, pitch, yaw = self.state.body_local_orientation
 
         try:
-            print(leg_position)
             # IK 계산
             pub_angles = self.inverse_kinematics.inverse_kinematics(
                 leg_position, dx, dy, dz, roll, pitch, yaw
