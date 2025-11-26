@@ -137,7 +137,7 @@ class RobotManager(Node):
             ]
 
             rotation = R.from_quat(quaternion)
-            rpy = rotation.as_euler('xyz', degrees=False)  # True면 °, False면 rad
+            rpy = rotation.as_euler('xyz', degrees=True)  # True면 °, False면 rad
 
             self.state.imu_roll = rpy[0]
             self.state.imu_pitch = rpy[1]

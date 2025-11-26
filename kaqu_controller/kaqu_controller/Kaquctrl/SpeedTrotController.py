@@ -95,7 +95,7 @@ class SpeedTrotGaitController(GaitController):
         # # imu compensation IMU 보정
         if self.use_imu: 
             # IMU에서 받은 기울기 (deg)
-            roll = state.imu_roll
+            roll = -state.imu_roll
             pitch = state.imu_pitch
             # PID 컨트롤러를 이용해 roll/pitch 오차 보정
             corrections = self.pid_controller.run(roll, pitch)
