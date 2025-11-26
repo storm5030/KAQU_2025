@@ -4,7 +4,7 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from scipy.spatial.transform import Rotation as R
-from sensor_msgs.msg import Joy
+from sensor_msgs.msg import Joy, Imu
 from kaqu_controller.KaquCmdManager.KaquParams import RobotCommand, RobotState, BehaviorState, LegParameters
 from kaqu_controller.Kaquctrl.TrotGaitController import TrotGaitController
 from kaqu_controller.Kaquctrl.RestController import RestController
@@ -28,6 +28,10 @@ class RobotManager(Node):
 
         self.subscription = self.create_subscription(
             Joy, '/joy', self.joystick_callback, 10
+        )
+
+        self.imu_subscription = self.create_subscription(
+            Imu, '/imu', self.imu_orientation, 10
         )
 
         self.angle_publisher = self.create_publisher(Float64MultiArray, '/legpo', 10)
