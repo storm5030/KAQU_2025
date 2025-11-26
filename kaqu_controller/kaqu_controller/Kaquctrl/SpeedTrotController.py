@@ -7,7 +7,7 @@ from kaqu_controller.Kaquctrl.PIDController import PID_controller
 from kaqu_controller.KaquIK.KinematicsCalculations import rotxyz, rotz
 from kaqu_controller.KaquCmdManager.KaquParams import LegParameters
 
-class SpeedGaitController(GaitController):
+class SpeedTrotController(GaitController):
     def __init__(self, default_stance, stance_time, swing_time, time_step, use_imu):
         #  77.5  77.5  -77.5 -77.5
         #-91.45 91.45 -91.45 91.45
