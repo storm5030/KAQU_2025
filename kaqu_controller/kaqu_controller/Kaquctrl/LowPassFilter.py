@@ -1,5 +1,3 @@
-# 임시 경사로 등반 코드 
-
 import rclpy
 import numpy as np
 from geometry_msgs.msg import Twist, TwistStamped
