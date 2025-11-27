@@ -105,13 +105,8 @@ class SpeedTrotGaitController(GaitController):
 
 
             # 과도한 보정 방지 (15도까지만)
-            max_angle = np.deg2rad(15)
-            min_angle = np.deg2rad(-15)
-            for angle in corrections:
-                if angle > max_angle:
-                    angle = max_angle
-                elif angle < min_angle:
-                    angle = min_angle
+            corrections = np.clip(corrections, np.deg2rad(-15), np.deg2rad(15))
+
            
             for leg_index in range(4):
                 x = new_foot_locations[0, leg_index]
