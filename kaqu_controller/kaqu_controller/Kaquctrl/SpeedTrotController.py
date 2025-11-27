@@ -97,10 +97,21 @@ class SpeedTrotGaitController(GaitController):
             # IMU에서 받은 기울기 (deg)
             roll = -state.imu_roll
             pitch = state.imu_pitch
+
             # PID 컨트롤러를 이용해 roll/pitch 오차 보정
             # corrections = self.pid_controller.run(roll, pitch)
             # corrections *= -1
             corrections = [roll, pitch]
+
+
+            # 과도한 보정 방지 (15도까지만)
+            max_angle = np.deg2rad(15)
+            min_angle = np.deg2rad(-15)
+            for angle in corrections:
+                if angle > max_angle:
+                    angle = max_angle
+                elif angle < min_angle:
+                    angle = min_angle
            
             for leg_index in range(4):
                 x = new_foot_locations[0, leg_index]
