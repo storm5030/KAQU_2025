@@ -57,7 +57,7 @@ class FollowPathServer(Node):
         self.yaw_rate_deg_s = np.degrees(trot.max_yaw_rate)
         self.turn_fast_window_deg = 12.0
         self.turn_fast_axis = 0.8     # 빠른 구간 속도
-        self.turn_slow_axis = 0.4     # 근접 구간(절반 속도 고정) ★비례제어 제거
+        self.turn_slow_axis = 0.2     # 근접 구간(절반 속도 고정) ★비례제어 제거
         self.yaw_tol_deg = 3.0
 
         # 전진 헤딩 P
@@ -263,7 +263,7 @@ class FollowPathServer(Node):
                 return False
 
             x, y, yaw_deg = self.imu_est.get_pose()
-            err = self._angle_diff_deg(self.yaw_target_deg, yaw_deg)
+            err = -1*self._angle_diff_deg(self.yaw_target_deg, yaw_deg)
 
             # ZUPT
             self.imu_est.vx = 0.0
