@@ -42,23 +42,23 @@ class FollowPathServer(Node):
         self.joy_pub = self.create_publisher(Joy, self.joy_topic, 10)
 
         # [제어 주기]
-        self.pub_hz = 50
+        self.pub_hz = 10
         self.dt = 1.0 / self.pub_hz
 
 
         leg_params = LegParameters()     
         trot = leg_params.gait 
 
-        x_vel_gain = 0.8;
+        x_vel_gain = 1.0;
 
         # 전진 속도 [m/s] (양수)
-        self.x_vel = trot.max_x_vel * 4 / x_vel_gain * 0.001 # mm/s -> m/s 변환
+        self.x_vel = trot.max_x_vel / x_vel_gain * 0.001 # mm/s -> m/s 변환
         # yaw 속도 [deg/s] (양수)
         self.yaw_rate_deg_s = np.degrees(trot.max_yaw_rate)
-        self.turn_fast_window_deg = 12.0
-        self.turn_fast_axis = 0.8     # 빠른 구간 속도
-        self.turn_slow_axis = 0.2     # 근접 구간(절반 속도 고정) ★비례제어 제거
-        self.yaw_tol_deg = 3.0
+        self.turn_fast_window_deg = 10.0
+        self.turn_fast_axis = 1.0     # 빠른 구간 속도
+        self.turn_slow_axis = 0.5     # 근접 구간(절반 속도 고정) ★비례제어 제거
+        self.yaw_tol_deg = 5.0
 
         # 전진 헤딩 P
         self.kp_yaw = 0.10
@@ -116,6 +116,7 @@ class FollowPathServer(Node):
 
     def execute_cb(self, goal_handle):
         self._stop_joy()
+        self._init_controller_state()
         self.imu_est.reset()
 
         # IMU 준비 대기(간단)
@@ -203,7 +204,7 @@ class FollowPathServer(Node):
         - 전진 축 크기: self.lin_axis_mag (조이스틱 스케일)
         """
         # 이동에 필요한 시간 계산 (안전 가드 포함)
-        v = max(1e-6, float(self.x_vel))                  # [m/s]
+        v = max(1e-6, float(self.x_vel) * 4)                  # [m/s]
         duration_s = abs(float(distance_m)) / v           # [s]
         t0 = time.time()
         t_end = t0 + duration_s
@@ -263,7 +264,7 @@ class FollowPathServer(Node):
                 return False
 
             x, y, yaw_deg = self.imu_est.get_pose()
-            err = -1*self._angle_diff_deg(self.yaw_target_deg, yaw_deg)
+            err = self._angle_diff_deg(self.yaw_target_deg, yaw_deg)
 
             # ZUPT
             self.imu_est.vx = 0.0
@@ -330,6 +331,27 @@ class FollowPathServer(Node):
 
     def _stop_joy(self):
         self.joy_pub.publish(self._make_joy_msg())
+
+    def _init_controller_state(self): #시작 시 보행모드 초기화 및 트롯 
+        joy = self._make_joy_msg()
+
+        # 버튼 1
+        joy.buttons[2] = 1 # REST 버튼
+        self.joy_pub.publish(joy)
+        time.sleep(0.1)
+
+        self.joy_pub.publish(self._make_joy_msg())
+        time.sleep(0.15)
+
+        # 버튼 2
+        joy = self._make_joy_msg()
+        joy.buttons[1] = 1 # TROT 버튼
+        self.joy_pub.publish(joy)
+        time.sleep(0.1)
+
+        self.joy_pub.publish(self._make_joy_msg())
+        time.sleep(0.2)
+
 
     @staticmethod
     def _wrap_deg(a: float) -> float:

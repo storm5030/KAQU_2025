@@ -45,11 +45,10 @@ def main():
     rclpy.init()
     node = FollowPathClient()
     steps = [
-        {"forward_m": 0.3},
+        {"forward_m": 1.0},
         {"turn_deg": -90},
-        {"forward_m": 0.9},
-        {"turn_deg": -90},
-        {"forward_m": 0.9},
+        {"forward_m": 0.5},
+        {"turn_deg": 90},
 
     ]
     # steps = [
