@@ -10,6 +10,9 @@ IMU 전용 FollowPath 액션 서버(개선판)
  4) 턴 동안 ZUPT 적용(속도=0 가정) → 드리프트 축적 완화
 """
 
+
+# 헤딩을 반대로 하기 위해서, execute_cb 내부의 lin_sign 및 ang 에 -1 곱함
+
 import json
 import time
 import math
@@ -39,21 +42,23 @@ class FollowPathServer(Node):
         self.joy_pub = self.create_publisher(Joy, self.joy_topic, 10)
 
         # [제어 주기]
-        self.pub_hz = 50
+        self.pub_hz = 10
         self.dt = 1.0 / self.pub_hz
 
 
         leg_params = LegParameters()     
         trot = leg_params.gait 
 
+        x_vel_gain = 0.70;
+
         # 전진 속도 [m/s] (양수)
-        self.x_vel = trot.max_x_vel * 4 * 0.001 # mm/s -> m/s 변환
+        self.x_vel = trot.max_x_vel / x_vel_gain * 0.001 # mm/s -> m/s 변환
         # yaw 속도 [deg/s] (양수)
         self.yaw_rate_deg_s = np.degrees(trot.max_yaw_rate)
-        self.turn_fast_window_deg = 12.0
-        self.turn_fast_axis = 0.8     # 빠른 구간 속도
-        self.turn_slow_axis = 0.4     # 근접 구간(절반 속도 고정) ★비례제어 제거
-        self.yaw_tol_deg = 3.0
+        self.turn_fast_window_deg = 20.0
+        self.turn_fast_axis = 1.0     # 빠른 구간 속도
+        self.turn_slow_axis = 0.2     # 근접 구간(절반 속도 고정) ★비례제어 제거
+        self.yaw_tol_deg = 1.0
 
         # 전진 헤딩 P
         self.kp_yaw = 0.10
@@ -111,6 +116,7 @@ class FollowPathServer(Node):
 
     def execute_cb(self, goal_handle):
         self._stop_joy()
+        self._init_controller_state()
         self.imu_est.reset()
 
         # IMU 준비 대기(간단)
@@ -156,14 +162,14 @@ class FollowPathServer(Node):
                 x0, y0, _ = self.imu_est.get_pose()
 
                 ok = self._run_forward(goal_handle, i,
-                                       distance_m=abs(dist), lin_sign=lin_sign,
+                                       distance_m=abs(dist), lin_sign= -1* lin_sign, # 헤딩 반대 -1 곱합
                                        x0=x0, y0=y0)
                 if not ok:
                     success = False
                     break
 
             elif 'turn_deg' in step:
-                ang = float(step['turn_deg'])
+                ang = -1 * float(step['turn_deg']) # 헤딩 반대 -1 곱함
                 self.get_logger().info(f'[{i}/{len(steps)-1}] turn {ang:.1f} deg')
 
                 # 전역 목표 헤딩 갱신만 수행(즉시 정확히 맞출 필요 없음 — 연이어 전진에서 보정)
@@ -198,7 +204,7 @@ class FollowPathServer(Node):
         - 전진 축 크기: self.lin_axis_mag (조이스틱 스케일)
         """
         # 이동에 필요한 시간 계산 (안전 가드 포함)
-        v = max(1e-6, float(self.x_vel))                  # [m/s]
+        v = max(1e-6, float(self.x_vel) * 4)                  # [m/s]
         duration_s = abs(float(distance_m)) / v           # [s]
         t0 = time.time()
         t_end = t0 + duration_s
@@ -325,6 +331,27 @@ class FollowPathServer(Node):
 
     def _stop_joy(self):
         self.joy_pub.publish(self._make_joy_msg())
+
+    def _init_controller_state(self): #시작 시 보행모드 초기화 및 트롯 
+        joy = self._make_joy_msg()
+
+        # 버튼 1
+        joy.buttons[2] = 1 # REST 버튼
+        self.joy_pub.publish(joy)
+        time.sleep(0.1)
+
+        self.joy_pub.publish(self._make_joy_msg())
+        time.sleep(0.15)
+
+        # 버튼 2
+        joy = self._make_joy_msg()
+        joy.buttons[1] = 1 # TROT 버튼
+        self.joy_pub.publish(joy)
+        time.sleep(0.1)
+
+        self.joy_pub.publish(self._make_joy_msg())
+        time.sleep(0.2)
+
 
     @staticmethod
     def _wrap_deg(a: float) -> float:
