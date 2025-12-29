@@ -3,16 +3,49 @@ import json
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
+from std_msgs.msg import String
 from kaqu_msgs.action import FollowPath
+
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+
 
 class FollowPathClient(Node):
     def __init__(self):
         super().__init__('follow_path_client')
         self.cli = ActionClient(self, FollowPath, 'follow_path')
 
+        qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL
+        )
+        self.sub = self.create_subscription(String, 'generated_steps', self.generated_steps_cb, qos)
+
+        self.busy = False
+        self.get_logger().info("FollowPathClient ready: waiting /generated_steps")
+
+    def generated_steps_cb(self, msg: String):
+        if self.busy:
+            self.get_logger().warn("Already executing a goal. Ignore new steps.")
+            return
+
+        try:
+            steps = json.loads(msg.data)
+            if not isinstance(steps, list):
+                raise ValueError("steps is not a list")
+        except Exception as e:
+            self.get_logger().error(f"Invalid generated_steps JSON: {e}")
+            return
+
+        self.get_logger().info(f"Received steps: len={len(steps)} -> send FollowPath goal")
+        self.busy = True
+        self.send(steps)
+
+    # ---- 아래는 네 코드 거의 그대로 ----
     def send(self, steps):
         goal = FollowPath.Goal()
-        goal.route_json = json.dumps(steps)
+        goal.route_json = json.dumps(steps, ensure_ascii=False)
+
         self.cli.wait_for_server()
         send_future = self.cli.send_goal_async(goal, feedback_callback=self.feedback_cb)
         send_future.add_done_callback(self.goal_response_cb)
@@ -27,6 +60,7 @@ class FollowPathClient(Node):
         goal_handle = future.result()
         if not goal_handle.accepted:
             self.get_logger().warn('Goal rejected')
+            self.busy = False
             return
         self.get_logger().info('Goal accepted')
         result_future = goal_handle.get_result_async()
@@ -39,63 +73,12 @@ class FollowPathClient(Node):
             f"total={result.total_time_s:.2f}s, "
             f"final pose=({result.final_x_m:.2f}, {result.final_y_m:.2f}, {result.final_yaw_deg:.1f} deg)"
         )
+        self.busy = False
 
 
 def main():
     rclpy.init()
     node = FollowPathClient()
-    steps = [
-        {"turn_deg": 90},
-        {"forward_m": 0.5},
-        {"turn_deg": 90},
-        {"forward_m": 0.5},
-        {"turn_deg": 180}
-    ]
-
-    # steps = [
-    #     {"forward_m": 0.5},
-    #     {"turn_deg": -90},
-    #     {"forward_m": 0.5},
-    #     {"turn_deg": 90}
-    # ]
-
-    # steps = [
-    #     # 지하 계단 - 창의관 B114
-    #     {"forward_m": 1.0},
-    #     {"turn_deg": 90},
-    #     {"forward_m": 9.0},
-    #     {"turn_deg": -90},
-    #     {"forward_m": 2.0},
-    #     {"turn_deg": 90},
-    #     {"forward_m": 2.0},
-    #     {"turn_deg": 90},
-
-
-    # ]
-    # steps = [
-    #엘베
-    #     {"forward_m": 1.0},
-        # {"turn_deg": -90},
-        # {"forward_m": 6.0},
-        # {"turn_deg": -90},
-        # {"forward_m": 4.0},
-        # {"turn_deg": 90},
-    # ]
-    # steps = [
-    #B102
-    #     {"forward_m": 1.0},
-        # {"turn_deg": -90},
-        # {"forward_m": 10.0},
-        # {"turn_deg": 90},
-    # ]
-    
-    future = node.send(steps)
-
-    def done_cb(_):
-        node.get_logger().info('Goal accepted, waiting for result...')
-
-    future.add_done_callback(done_cb)
-
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
