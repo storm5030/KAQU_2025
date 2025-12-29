@@ -45,19 +45,48 @@ def main():
     rclpy.init()
     node = FollowPathClient()
     steps = [
-        {"forward_m": 3.0},
-        {"turn_deg": -90},
+        {"turn_deg": 90},
         {"forward_m": 0.5},
         {"turn_deg": 90},
-
+        {"forward_m": 0.5},
+        {"turn_deg": 180}
     ]
+
     # steps = [
-    #     {"forward_m": 2.1},
+    #     {"forward_m": 0.5},
     #     {"turn_deg": -90},
-    #     {"forward_m": 7.2},
-    #     {"turn_deg": -90},
+    #     {"forward_m": 0.5},
+    #     {"turn_deg": 90}
+    # ]
+
+    # steps = [
+    #     # 지하 계단 - 창의관 B114
     #     {"forward_m": 1.0},
-    #     {"turn_deg": 180},
+    #     {"turn_deg": 90},
+    #     {"forward_m": 9.0},
+    #     {"turn_deg": -90},
+    #     {"forward_m": 2.0},
+    #     {"turn_deg": 90},
+    #     {"forward_m": 2.0},
+    #     {"turn_deg": 90},
+
+
+    # ]
+    # steps = [
+    #엘베
+    #     {"forward_m": 1.0},
+        # {"turn_deg": -90},
+        # {"forward_m": 6.0},
+        # {"turn_deg": -90},
+        # {"forward_m": 4.0},
+        # {"turn_deg": 90},
+    # ]
+    # steps = [
+    #B102
+    #     {"forward_m": 1.0},
+        # {"turn_deg": -90},
+        # {"forward_m": 10.0},
+        # {"turn_deg": 90},
     # ]
     
     future = node.send(steps)

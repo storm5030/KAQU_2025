@@ -49,16 +49,16 @@ class FollowPathServer(Node):
         leg_params = LegParameters()     
         trot = leg_params.gait 
 
-        x_vel_gain = 1.0;
+        x_vel_gain = 0.70;
 
         # 전진 속도 [m/s] (양수)
         self.x_vel = trot.max_x_vel / x_vel_gain * 0.001 # mm/s -> m/s 변환
         # yaw 속도 [deg/s] (양수)
         self.yaw_rate_deg_s = np.degrees(trot.max_yaw_rate)
-        self.turn_fast_window_deg = 10.0
+        self.turn_fast_window_deg = 20.0
         self.turn_fast_axis = 1.0     # 빠른 구간 속도
-        self.turn_slow_axis = 0.5     # 근접 구간(절반 속도 고정) ★비례제어 제거
-        self.yaw_tol_deg = 5.0
+        self.turn_slow_axis = 0.2     # 근접 구간(절반 속도 고정) ★비례제어 제거
+        self.yaw_tol_deg = 1.0
 
         # 전진 헤딩 P
         self.kp_yaw = 0.10
