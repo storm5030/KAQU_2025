@@ -44,7 +44,7 @@ class LLMNode(Node):
         self.plan_pub = self.create_publisher(String, 'destination_plan', 10)
         self.sub = self.create_subscription(String, 'stt_text', self.stt_callback, 10)
 
-        pkg_share_path = get_package_share_directory('kaqu_llm_ina')
+        pkg_share_path = get_package_share_directory('kaqu_nav')
 
         # env
         dotenv_path = os.path.join(pkg_share_path, '.env')

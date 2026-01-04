@@ -28,7 +28,7 @@ class NavigatorNode(Node):
         # ✅ 생성된 steps(JSON array string)를 퍼블리시
         self.steps_pub = self.create_publisher(String, 'generated_steps', qos)
 
-        share_dir = get_package_share_directory('kaqu_llm_ina')
+        share_dir = get_package_share_directory('kaqu_nav')
         map_path = os.path.join(share_dir, 'map.json')
         with open(map_path, 'r', encoding='utf-8') as f:
             self.map_data = json.load(f)

@@ -10,6 +10,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        ('share/kaqu_nav', ['map.json']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -26,6 +27,9 @@ setup(
         'console_scripts': [
             'follow_path_client = kaqu_nav.follow_path_client:main',
             'follow_path_server = kaqu_nav.follow_path_server:main',
+            'LLMNode = kaqu_nav.LLMNode:main',
+            'NavigatorNode = kaqu_nav.NavigatorNode:main',
+            'STTNode = kaqu_nav.STTNode:main',
 
         ],
     },
