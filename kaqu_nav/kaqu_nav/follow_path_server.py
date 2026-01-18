@@ -73,8 +73,10 @@ class FollowPathServer(Node):
         cfg = PoseEstimatorConfig(
             calib_samples=100,
             prefer_quat_yaw=True,
-            accel_has_gravity=True  # 가제보 IMU가 중력 포함이면 True로 바꾸세요
+            accel_has_gravity=True,
+            yaw_drift_deg_s=9.214250e-02
         )
+
         self.imu_est = ImuPose2D(cfg)
         sensor_qos = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
@@ -127,9 +129,33 @@ class FollowPathServer(Node):
             return FollowPath.Result(success=False, message=msg,
                                      total_time_s=0.0, final_x_m=0.0, final_y_m=0.0, final_yaw_deg=0.0)
 
-        # 전역 헤딩 목표 초기화(현재 IMU yaw)
-        _, _, yaw0 = self.imu_est.get_pose()
-        self.yaw_target_deg = float(yaw0)
+        # # 전역 헤딩 목표 초기화(현재 IMU yaw)
+        # _, _, yaw0 = self.imu_est.get_pose()
+        # self.yaw_target_deg = float(yaw0)
+
+        # 전역 헤딩 목표 초기화(초기 1초 안정화 후 중앙값으로 설정)
+        self._stop_joy()
+
+        yaws = []
+        t_sample = time.time()
+        sample_duration = 1.0   # 필요하면 1.5~2.0으로 늘려도 됨
+
+        while time.time() - t_sample < sample_duration:
+            _, _, yy = self.imu_est.get_pose()
+            yaws.append(float(yy))
+
+            # 정지 상태 가정(ZUPT)로 초기 드리프트 누적 완화
+            self.imu_est.vx = 0.0
+            self.imu_est.vy = 0.0
+
+            time.sleep(self.dt)
+
+        # 중앙값(튀는 샘플에 강함)
+        yaw0 = float(np.median(yaws)) if yaws else float(self.imu_est.get_pose()[2])
+        self.yaw_target_deg = yaw0
+
+        self.get_logger().info(f'Init yaw_target_deg={self.yaw_target_deg:.2f} deg (median over {len(yaws)} samples)')
+
 
         # Goal 파싱
         try:
@@ -229,6 +255,11 @@ class FollowPathServer(Node):
             err = self._angle_diff_deg(self.yaw_target_deg, yaw_deg)
             yaw_rate_cmd = self.kp_yaw * err                    # [deg/s]
             yaw_axis = max(-1.0, min(1.0, yaw_rate_cmd / max(1e-6, self.yaw_rate_deg_s)))
+            elapsed = now - t0
+            min_axis = 0.0 if elapsed < 1.0 else self.min_yaw_axis
+            if min_axis > 0.0 and abs(yaw_axis) > 1e-3 and abs(yaw_axis) < min_axis:
+                yaw_axis = math.copysign(min_axis, yaw_axis)
+
             if self.min_yaw_axis > 0.0 and abs(yaw_axis) > 1e-3 and abs(yaw_axis) < self.min_yaw_axis:
                 yaw_axis = math.copysign(self.min_yaw_axis, yaw_axis)
 

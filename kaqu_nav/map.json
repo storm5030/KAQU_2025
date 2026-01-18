@@ -38,6 +38,69 @@
       "back_steps": [
         {"forward_m": 3.0}
       ]
+    },
+    {
+      "id": 114,
+      "name": "B114",
+      "go_steps": [
+        {"forward_m": 1.0},
+        {"turn_deg": 90},
+        {"forward_m": 9.0},
+        {"turn_deg": -90},
+        {"forward_m": 2.0},
+        {"turn_deg": 90},
+        {"forward_m": 2.0},
+        {"turn_deg": 90}
+      ],
+      "back_steps": [
+        {"turn_deg": -90},
+        {"forward_m": 2.0},
+        {"turn_deg": -90},
+        {"forward_m": 2.0},
+        {"turn_deg": -90},
+        {"forward_m": 9.0},
+        {"turn_deg": -90},
+        {"forward_m": 1.0},
+        {"turn_deg": -180}
+      ]
+    },
+    {
+      "id": 110,
+      "name": "엘레베이터",
+      "go_steps": [
+        {"forward_m": 1.0},
+        {"turn_deg": -90},
+        {"forward_m": 6.0},
+        {"turn_deg": -90},
+        {"forward_m": 4.0},
+        {"turn_deg": 90}
+      ],
+      "back_steps": [
+        {"turn_deg": -90},
+        {"forward_m": 4.0},
+        {"turn_deg": 90},
+        {"forward_m": 6.0},
+        {"turn_deg": 90},
+        {"forward_m": 1.0},
+        {"turn_deg": 180}
+      ]
+    },
+    {
+      "id": 102,
+      "name": "B102",
+      "go_steps": [
+        {"forward_m": 1.0},
+        {"turn_deg": -90},
+        {"forward_m": 10.0},
+        {"turn_deg": 90}
+      ],
+      "back_steps": [
+        {"turn_deg": -90},
+        {"forward_m": 10.0},
+        {"turn_deg": 90},
+        {"forward_m": 1.0},
+        {"turn_deg": 180}
+      ]
     }
   ]
 }

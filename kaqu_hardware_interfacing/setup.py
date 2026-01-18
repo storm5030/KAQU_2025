@@ -24,7 +24,8 @@ setup(
             'imu_write = kaqu_hardware_interfacing.imu_write:main',
             'control_subscriber = kaqu_hardware_interfacing.control_subscriber:main',
             'present_angle_publisher = kaqu_hardware_interfacing.present_angle_publisher:main',
-            'imu_data_publisher = kaqu_hardware_interfacing.imu_data_publisher:main'
+            'imu_data_publisher = kaqu_hardware_interfacing.imu_data_publisher:main',
+            'imu_yaw_drift_estimator = kaqu_hardware_interfacing.imu_yaw_drift_estimator:main'
         ],
     },
 )

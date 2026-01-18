@@ -5,6 +5,9 @@
 - yaw: 쿼터니언이 유효하면 사용, 아니면 gz 적분
 - 바디 가속도 -> 월드 가속도 변환: 쿼터니언 전체 회전행렬 사용
 - accel_has_gravity=True면 월드 z축에서 g 제거(중력 포함 IMU용)
+
+[추가] yaw 드리프트 보정:
+- 측정된 yaw drift rate(deg/s)를 이용해 yaw_raw에서 (rate * elapsed)만큼 감산
 """
 
 from dataclasses import dataclass
@@ -31,7 +34,7 @@ def _quat_to_rotm(x: float, y: float, z: float, w: float):
     xx,yy,zz = x*x, y*y, z*z
     xy,xz,yz = x*y, x*z, y*z
     wx,wy,wz = w*x, w*y, w*z
-    r00 = 1.0 - 2.0*(yy+zz); r01 = 2.0*(xy - wz);   r02 = 2.0*(xz + wy)
+    r00 = 1.0 - 2.0*(yy+zz); r01 = 2.0*(xy - wz);    r02 = 2.0*(xz + wy)
     r10 = 2.0*(xy + wz);     r11 = 1.0 - 2.0*(xx+zz); r12 = 2.0*(yz - wx)
     r20 = 2.0*(xz - wy);     r21 = 2.0*(yz + wx);     r22 = 1.0 - 2.0*(xx+yy)
     return ((r00,r01,r02),(r10,r11,r12),(r20,r21,r22))
@@ -43,6 +46,10 @@ class PoseEstimatorConfig:
     min_dt: float = 1e-3
     prefer_quat_yaw: bool = True
     accel_has_gravity: bool = False   # True면 월드 z에서 g 제거
+
+    # [추가] 측정 기반 yaw drift 보정 (deg/s)
+    # 예) estimator 측정값: +9.214250e-02 deg/s
+    yaw_drift_deg_s: float = 0.0
 
 
 class ImuPose2D:
@@ -59,16 +66,25 @@ class ImuPose2D:
         self._n = 0
         self.ready = False
 
+        # [추가] yaw drift 보정 기준 시각
+        self._yaw_t0: Optional[float] = None
+
     def update(self, imu: Imu) -> None:
         # 시간
         try:
             t = float(imu.header.stamp.sec) + float(imu.header.stamp.nanosec) * 1e-9
         except Exception:
             return
+
+        # yaw drift 기준 시각 설정(첫 메시지 stamp)
+        if self._yaw_t0 is None:
+            self._yaw_t0 = t
+
         if self._last_t is None:
             self._last_t = t
             self._accumulate_bias(imu)
             return
+
         dt = max(self.cfg.min_dt, t - self._last_t)
         self._last_t = t
 
@@ -87,11 +103,21 @@ class ImuPose2D:
         qy = float(getattr(imu.orientation, "y", 0.0))
         qz = float(getattr(imu.orientation, "z", 0.0))
         qw = float(getattr(imu.orientation, "w", 1.0))
+
         if self.cfg.prefer_quat_yaw and (qx*qx+qy*qy+qz*qz+qw*qw) > 1e-6:
-            self.yaw_deg = _yaw_from_quaternion(qx, qy, qz, qw)
+            yaw_raw_deg = _yaw_from_quaternion(qx, qy, qz, qw)
         else:
-            self.yaw_deg += math.degrees(gz) * dt
-        self.yaw_deg = self._wrap_deg(self.yaw_deg)
+            # gyro 적분은 내부 yaw_deg를 기반으로 누적
+            yaw_raw_deg = self.yaw_deg + math.degrees(gz) * dt
+
+        # [추가] yaw drift 보정 적용
+        if self.cfg.yaw_drift_deg_s != 0.0 and self._yaw_t0 is not None:
+            elapsed = t - self._yaw_t0
+            yaw_corr_deg = yaw_raw_deg - (self.cfg.yaw_drift_deg_s * elapsed)
+        else:
+            yaw_corr_deg = yaw_raw_deg
+
+        self.yaw_deg = self._wrap_deg(float(yaw_corr_deg))
 
         # 바디 -> 월드 (풀 3D 회전)
         R = _quat_to_rotm(qx, qy, qz, qw)  # 월드 = R * 바디
@@ -99,7 +125,7 @@ class ImuPose2D:
         ay_w = R[1][0]*ax_b + R[1][1]*ay_b + R[1][2]*0.0
         az_w = R[2][0]*ax_b + R[2][1]*ay_b + R[2][2]*0.0
 
-        # (옵션) 중력 보정: 가제보/드라이버가 중력 포함으로 주면 True로
+        # (옵션) 중력 보정
         if self.cfg.accel_has_gravity:
             az_w -= 9.80665
 
@@ -125,6 +151,9 @@ class ImuPose2D:
 
     @staticmethod
     def _wrap_deg(a: float) -> float:
-        if a > 180.0: a -= 360.0
-        if a < -180.0: a += 360.0
+        # 기존 if 1회 보정은 큰 값에서 깨질 수 있어서 while로 안전하게 처리
+        while a > 180.0:
+            a -= 360.0
+        while a < -180.0:
+            a += 360.0
         return a
