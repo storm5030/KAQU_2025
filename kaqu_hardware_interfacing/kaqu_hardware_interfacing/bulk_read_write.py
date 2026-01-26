@@ -82,6 +82,16 @@ if MY_DXL == 'X_SERIES' or MY_DXL == 'MX_SERIES':
 
     ADDR_DRIVE_MODE             = 10        # 주의 : 이거 수작업으로 가능한데 수작업으로 일단 해봅시다
 
+    # 포지션 제어 개인
+    ADDR_POS_D_GAIN = 80
+    ADDR_POS_I_GAIN = 82
+    ADDR_POS_P_GAIN = 84
+
+    # Set Velocity Limit to 600 (approx. 137.4 RPM) 기본값 200정도
+    VELOCITY_LIMIT_VALUE = 1000
+    ADDR_VELOCITY_LIMIT = 44
+    LEN_VELOCITY_LIMIT = 4
+
 # 아래 내용은 지워버리거나 각 모터별로 다르게 적용하면 될 듯. 
 DXL_MINIMUM_POSITION_VALUE  = -1024         # Refer to the Minimum Position Limit of product eManual
 DXL_MAXIMUM_POSITION_VALUE  =  1024         # Refer to the Maximum Position Limit of product eManual
@@ -90,12 +100,6 @@ DXL_2PI                     = 4095          # 포지션 기준 한바퀴. 앞으
 TORQUE_ENABLE               = 1                 # Value for enabling the torque
 TORQUE_DISABLE              = 0                 # Value for disabling the torque
 DXL_MOVING_STATUS_THRESHOLD = 10                # Dynamixel moving status threshold
-
-# Set Velocity Limit to 600 (approx. 137.4 RPM) 기본값 200정도
-VELOCITY_LIMIT_VALUE = 200
-ADDR_VELOCITY_LIMIT = 44
-LEN_VELOCITY_LIMIT = 4
-
 
 # DYNAMIXEL Protocol Version 
 PROTOCOL_VERSION            = 2.0
@@ -122,7 +126,8 @@ IK_ERROR_RANGE = 0.1
 # 주의 : 포지션 모드 확장 모드로 변경 필요
 
 dxl_led_value = [0x00, 0x01]                                                        # Dynamixel LED value for write
-dxl_id = [FR1_ID, FR2_ID, FR3_ID, FL1_ID, FL2_ID, FL3_ID, RR1_ID, RR2_ID, RR3_ID, RL1_ID, RL2_ID, RL3_ID]
+dxl_id = [FR1_ID, FR2_ID, FR3_ID]
+# dxl_id = [FR1_ID, FR2_ID, FR3_ID, FL1_ID, FL2_ID, FL3_ID, RR1_ID, RR2_ID, RR3_ID, RL1_ID, RL2_ID, RL3_ID]
 
 # 계산에 필요한 하드웨어 스펙
 # 이 부분을 코드에 박아둘까요 말까요
@@ -138,6 +143,14 @@ angle_reverse = [1, 1, 1, 1, -1, -1, -1, 1, 1, -1, -1, -1]
 #camber = 60
 camber = 0
 dxl_offset = [2048, 0-camber, 0+camber, 2048, 4095+camber, 4095-camber, 2048, 0, 0, 2048, 4095, 4095] # sim->real 방향 기준으로 + 해주면 됨
+
+# 원하는 게인 값
+# P게인: 현재 값보다 높게 설정 (기본 800)
+# I게인: 보통 0 사용
+# D게인: 진동 잡을 때 사용 (보통 P게인의 1/10 ~ 1/20 수준이나 0부터 시작)
+MY_P_GAIN = 3000 
+MY_I_GAIN = 0
+MY_D_GAIN = 10
 
 # Initialize PortHandler, PacketHandler instance
 # Initialize GroupBulkWrite instance / Initialize GroupBulkRead instace for Present Position
@@ -164,6 +177,8 @@ else:
     getch()
     quit()
 
+print(f"Setting P-Gain to {MY_P_GAIN}...")
+
 # 컨트롤 모드 변경
 for i in dxl_id:
     dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, i, ADDR_OPERATING_MODE, EXTENDED_POS_MODE)
@@ -174,6 +189,7 @@ for i in dxl_id:
     else:
         print("Operating mode changed to extended position control mode of dxl No. ", i)
 
+    # Velocity Limit 수정
     dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, i, ADDR_VELOCITY_LIMIT, VELOCITY_LIMIT_VALUE)
     if dxl_comm_result != COMM_SUCCESS:
         print("[ID:%03d] Velocity Limit write failed: %s" % (i, packetHandler.getTxRxResult(dxl_comm_result)))
@@ -181,6 +197,20 @@ for i in dxl_id:
         print("[ID:%03d] Velocity Limit error: %s" % (i, packetHandler.getRxPacketError(dxl_error)))
     else:
         print("[ID:%03d] Velocity Limit set to %d" % (i, VELOCITY_LIMIT_VALUE))
+
+    # 모터에 게인 값 쓰기 (반복문)
+    # (1) P Gain 설정 (2 Byte)
+    dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, i, ADDR_POS_P_GAIN, MY_P_GAIN)
+    if dxl_comm_result != COMM_SUCCESS:
+        print(f"[ID:{i:03d}] Failed to set P Gain: {packetHandler.getTxRxResult(dxl_comm_result)}")
+    
+    # (2) I Gain 설정 (필요하면 주석 해제)
+    # packetHandler.write2ByteTxRx(portHandler, motor_id, ADDR_POS_I_GAIN, MY_I_GAIN)
+    
+    # (3) D Gain 설정 (필요하면 주석 해제)
+    # packetHandler.write2ByteTxRx(portHandler, motor_id, ADDR_POS_D_GAIN, MY_D_GAIN)
+
+print("Gain setting complete.")
 
 
 
@@ -195,37 +225,9 @@ for i in dxl_id:
         print("[ID:%03d] groupBulkRead addparam failed" % i)
         quit()
 
-# # present pos 읽어오고 토크 켜기 전 이를 goal pos로 입력
-# init_pos = [0]*12
-
-# dxl_comm_result = groupBulkRead.txRxPacket()
-# if dxl_comm_result != COMM_SUCCESS:
-#     print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-# for i in range(len(dxl_id)):
-#     dxl_getdata_result = groupBulkRead.isAvailable(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
-#     if dxl_getdata_result != True:
-#         print("[ID:%03d] groupBulkRead getdata failed" % dxl_id[i])
-#         quit()
-#     # present pos 가져오기
-#     init_pos[i] = groupBulkRead.getData(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
-#     print("[ID:%03d] Present Position : %d" % (dxl_id[i], init_pos[i]))
-
-#     # goal pos로 설정
-#     param_goal_position = [DXL_LOBYTE(DXL_LOWORD(init_pos[i])), 
-#                             DXL_HIBYTE(DXL_LOWORD(init_pos[i])), 
-#                             DXL_LOBYTE(DXL_HIWORD(init_pos[i])), 
-#                             DXL_HIBYTE(DXL_HIWORD(init_pos[i]))]
-#     dxl_addparam_result = groupBulkWrite.addParam(dxl_id[i], ADDR_GOAL_POSITION, LEN_GOAL_POSITION, param_goal_position)
-#     if dxl_addparam_result != True:
-#         print("[ID:%03d] groupBulkWrite addparam failed" % dxl_id[i])
-#         quit()
-    
-#     # BulkWrite Goal Position
-#     dxl_comm_result = groupBulkWrite.txPacket()
-#     if dxl_comm_result != COMM_SUCCESS:
-#         print("%s" %packetHandler.getTxRxResult(dxl_comm_result))
-# # 파라미터 저장소 비우기
-# groupBulkWrite.clearParam()
+dxl_comm_result = groupBulkRead.txRxPacket()
+if dxl_comm_result != COMM_SUCCESS:
+    print(f"{packetHandler.getTxRxResult(dxl_comm_result)}")
 
 
 # 각 모터 토크 켜기. 이 때 모터가 살짝 움직이게 될 것. 
@@ -273,11 +275,11 @@ class Bulk_Read_Write(Node):
         # 다리 각도 제어값(엉덩이)
         # 주의 : msg타입, 토픽이름 수정해야 함. 
         self.control_subscriber = self.create_subscription(Float64MultiArray, 'joint_group_position_controller/commands', self.control_callback, 20)
-        # self.present_angle_publisher = self.create_publisher(Float64MultiArray, 'real_leg_angle', 20)
+        self.present_angle_publisher = self.create_publisher(Float64MultiArray, 'real_leg_angle', 20)
         # self.imu_data_publisher = self.create_publisher(Imu, 'imu_data', 20)
         
         # ROS로 현재 상황을 보내는 퍼블리셔
-        # self.pos_timer = self.create_timer(data_pub_period, self.publish_data)
+        self.pos_timer = self.create_timer(data_pub_period, self.publish_data)
         
         # 로봇으로 데이터를 보내는 퍼블리셔
         self.robot_timer = self.create_timer(control_period, self.timer_callback)
@@ -289,11 +291,11 @@ class Bulk_Read_Write(Node):
         cmd_angle = msg.data
         # cmd_vel = msg.velocity
 
-        print(cmd_angle)
+        # print(cmd_angle)
 
         # Transform
         goal_pos = self.sim_to_real_transform(cmd_angle)
-        print(goal_pos)
+        # print(goal_pos)
         
         # last command update(다이나믹셀 각도)
         # 주의 : valid 여부 다르게 해야함
@@ -309,20 +311,20 @@ class Bulk_Read_Write(Node):
     # 주의 : 함수 구조 살펴봐야 함. 
     def publish_data(self):
         pass
-        # angle_msg = Float64MultiArray()
+        angle_msg = Float64MultiArray()
         # imu_msg = Imu()
 
         # # 읽은 값 받아오기
-        # real_angle = self.real_to_sim_transform(self.last_read_joint_dxl)
+        real_angle = self.real_to_sim_transform(self.last_read_joint_dxl)
 
         # # 모터값 라디안으로 변환하여 넣기
-        # for i in range(self.last_read_joint_dxl):
-        #     angle_msg.data[i] = real_angle[i]
+        for i in range(len(self.last_read_joint_dxl)):
+            angle_msg.data.append(real_angle[i])
 
-        # # 받아온 센서값 넣기
+        # 받아온 센서값 넣기
         
-        # # 퍼블리시
-        # self.present_angle_publisher.publish(angle_msg)
+        # 퍼블리시
+        self.present_angle_publisher.publish(angle_msg)
         # self.imu_data_publisher.publish(imu_msg)
 
     def timer_callback(self):
@@ -330,7 +332,31 @@ class Bulk_Read_Write(Node):
         dxl_comm_result = self.groupBulkRead.txRxPacket()
         if dxl_comm_result != COMM_SUCCESS:
             print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
+        print("-------------------------------------------------------")
+        print(" ID  |  Goal Pos  |  Present Pos  |  Error (Goal-Pres)")
+        print("-------------------------------------------------------")
 
+        for i, motor_id in enumerate(dxl_id):
+            # (1) Present Position 데이터 가져오기
+            # getData(ID, Address, Length)
+            dxl_present_position = groupBulkRead.getData(motor_id, ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
+            self.last_read_joint_dxl[i] = dxl_present_position
+
+            # (2) Goal Position (사용자가 쓰려고 준비한 변수)
+            # param_goal_position 리스트가 바이트 배열이라면, 정수로 변환해서 봐야 합니다.
+            # 만약 정수형 목표값 변수(예: goal_pos_list[i])가 따로 있다면 그걸 출력하세요.
+            # 여기서는 예시로 goal_position 변수를 사용한다고 가정합니다.
+            current_goal_pos = self.last_command[i] # <-- 님 코드의 목표 위치 변수
+
+            # (3) 오차 계산
+            error = current_goal_pos - dxl_present_position
+
+            # (4) 출력
+            print(f" {motor_id:03d} | {current_goal_pos:10d} | {dxl_present_position:13d} | {error:10d}")
+            
+            # [진단 Tip]
+            # Error가 양수(+)면: 목표가 더 큼 -> 덜 올라갔거나(처짐), 아직 가는 중
+            # Error가 0에 가까움: 잘 도달함
         # for i in range(len(dxl_id)):
         #     dxl_getdata_result = self.groupBulkRead.isAvailable(dxl_id[i], ADDR_PRESENT_POSITION, LEN_PRESENT_POSITION)
         #     if dxl_getdata_result != True:
@@ -342,7 +368,8 @@ class Bulk_Read_Write(Node):
             # print("[ID:%03d] Present Position : %d" % (dxl_id[i], self.last_read_joint_dxl[i]))
         
         # 쓰기 
-        for i in range(len(self.last_command)):
+        # for i in range(len(self.last_command)):
+        for i in range(len(dxl_id)):
             # 마지막 명령값 받아오기
             # print("last command : ", self.last_command[i])
             # self.goal_position[i] = self.last_command[i]
@@ -364,7 +391,6 @@ class Bulk_Read_Write(Node):
         # 파라미터 저장소 비우기
         self.groupBulkWrite.clearParam()
 
-    # 굳이 self를 넣어야 할까요?
     def sim_to_real_transform(self, cmd_angle):
         real_angle = [0]*12
         # cmd angle은 각도 반전이 된 각이 들어옴(시뮬에서도 그 각을 쓰니까)
@@ -410,57 +436,65 @@ class Bulk_Read_Write(Node):
         return real_angle
 
 
+    # 각도를 -pi ~ pi 사이로 변환
+    def angle_normalize(self, x):
+        return ((x + pi) % (2 * pi)) - pi
+
     def real_to_sim_transform(self, present_angle):
         rad_angle = [0]*12
         sim_angle = [0]*12
 
+        # 1) 각도 변환 (오프셋 및 방향 처리)
+        for i in range(len(dxl_id)):
+            angle_without_offset = (present_angle[i] - dxl_offset[i]) * angle_reverse[i]
+            rad_angle[i] = angle_without_offset * 2 * pi / DXL_2PI
         
-        # # 다이나믹셀 각도 -> 라디안으로 변환
-        # # IK 를 하나의 식으로 풀기 위해서는 세 가지를 거쳐야 함. 
-        # # 1) 각도를 라디안 형식으로 변환
-        # # 2) 라디안 기준의 오프셋 적용
-        # # 3) 반전한 각도의 방향을 바꿔주기
-        # for i in range(len(dxl_id)):
-        #     rad_angle[i] = present_angle[i]*2*pi/DXL_2PI - dxl_offset[i] # sim to real 기준으로 오프셋 + 
-        #     rad_angle[i] = angle_reverse[i]*rad_angle[i]  # 각도 반전
-        
-        # # IK 풀기
-        # # 주의 : IK 풀기 전에 모터 각도 고려해서 절대좌표계로 바꿔줘야 함
-        # for i in range(4):
-        #     roll = rad_angle[3*i]
-        #     alpha = rad_angle[3*i+1]
-        #     beta2 = rad_angle[3*i+2]
+        # 2) IK (Forward Kinematics)
+        for i in range(4):
+            # [입력값]
+            roll = rad_angle[3*i]
+            alpha = rad_angle[3*i+1] # Hip Pitch (Motor)
+            beta2 = rad_angle[3*i+2] # Knee Pitch (Motor)
 
-        #     _a = l2*cos(beta2)-l1*cos(alpha)
-        #     _b = lhip+l2*sin(beta2)-l1*sin(alpha)
-        #     _c = -(l3**2-l4a**2-_a**2-_b**2)/(2*l4a)
-        #     # 판별식
-        #     if (_b**2-_c**2+_a**2)<0:
-        #         print("something wrong with %03d th leg IK" %(i+1))
-        #         break
-        #     else:
-        #         pass
+            # [Hip 복원] 
+            # sim_to_real: alpha = hip_cmd + pi
+            # 역산: hip_cmd = alpha - pi
+            original_hip = alpha - pi
+            
+            # [Hip 오차 확인용 - 디버깅 시에만 주석 해제]
+            # print(f"Hip Calc: {original_hip:.4f}") 
 
-        #     beta1 = 2*atan2(_b-sqrt(_b**2-_c**2+_a**2)/(_a+_c))
+            # [Beta1(Linkage) 복원]
+            _a = l2*cos(beta2)-l1*cos(alpha)
+            _b = lhip+l2*sin(beta2)-l1*sin(alpha)
+            _c = -(l3**2-l4a**2-_a**2-_b**2)/(2*l4a)
+            
+            discriminant = _b**2-_c**2+_a**2
+            if discriminant < -0.0001: 
+                print(f"Leg {i} Kinematics Error")
+                sim_angle[3*i+2] = 0 # 에러 시 0도 처리
+                continue
+            if discriminant < 0: discriminant = 0 # 부동소수점 보정
 
-        #     # 말이 되는 각도인지 확인
-        #     if (l2*cos(beta2)-l4a*cos(beta1)-l1*cos(alpha))<(-IK_ERROR_RANGE):
-        #         beta2 = 2*atan2(_b+sqrt(_b**2-_c**2+_a**2)/(_a+_c))
-        #         if (l2*cos(beta2)-l4a*cos(beta1)-l1*cos(alpha))<(-IK_ERROR_RANGE):
-        #             print("something wrong with %03d th leg IK" %(i+1))
-        #             break
-        #         else: 
-        #             pass
-        #     else:
-        #         pass
-        #     # 각도 넣기(라디안->다이나믹셀 각도)
-        #     sim_angle[3*i] = roll
-        #     sim_angle[3*i+1] = alpha
-        #     sim_angle[3*i+2] = beta1
-        # # 주의 : 모터 설치 각도 확인하는 부분 넣어야 함. 
+            # [중요] beta1 계산
+            # sim_to_real에서 +sqrt를 썼다면, 구조에 따라 여기서 -sqrt가 맞을 수도, +sqrt가 맞을 수도 있음
+            # 일단 -sqrt로 두고, 결과가 이상하면 +sqrt로 변경 테스트 필요
+            beta1 = 2*atan2(_b+sqrt(discriminant), _a+_c)
 
-        # for i in range(len(dxl_id)):
-        #     rad_angle[i] = angle_reverse[i]*rad_angle[i] # 모두 양수였던 각도를 다시 +-로 바꿔주기
+            # [Knee 복원]
+            # 수식: knee = beta1 - pi - original_hip
+            temp_knee = beta1 - pi - original_hip
+
+            # 3) 최종 값 대입 및 보정
+            sim_angle[3*i] = self.angle_normalize(roll)
+            sim_angle[3*i+1] = self.angle_normalize(original_hip)
+
+            # [문제 해결 파트]
+            # 현상: 부호가 반대이고 절대값이 큼.
+            # 조치 1: 부호를 반대로 뒤집음 (-temp_knee)
+            # 조치 2: 절대값 오차는 'beta1' 계산의 sqrt 부호 문제일 수 있음.
+            
+            sim_angle[3*i+2] = self.angle_normalize(temp_knee) 
 
         return sim_angle
 
